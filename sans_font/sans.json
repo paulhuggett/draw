@@ -1,0 +1,38 @@
+{
+  "name": "sans",
+  "spacing": 2,
+  "glyphs": [
+    { "file": "basic_latin-0000-000F.png", "starts": [ [0, 0] ], "no-split": [
+      [2,10], [15,23], [27,35], [39,47],
+      [52,60], [64,72], [77,85], [89,97],
+      [101,109], [113,121], [125,133], [137,145],
+      [150,158], [162,170], [174,182], [187,195]
+    ] },
+    { "file": "basic_latin-0010-001F.png", "starts": [ [0, 16] ], "no-split": [
+      [2,10], [15,23], [27,35], [39,47],
+      [52,60], [64,72], [77,85], [89,97],
+      [101,109], [113,121], [125,133], [137,145],
+      [150,158], [162,170], [174,182], [187,195]
+    ] },
+    { "file": "basic_latin-0020-002F.png", "starts": [ [0, 32] ], "no-split": [ [1,3] ] },
+    { "file": "basic_latin-0030-003F.png", "starts": [ [0, 48] ], "no-split": [] },
+    { "file": "basic_latin-0040-004F.png", "starts": [ [0, 64] ], "no-split": [] },
+    { "file": "basic_latin-0050-005F.png", "starts": [ [0, 80] ], "no-split": [] },
+    { "file": "basic_latin-0060-006F.png", "starts": [ [0, 96] ], "no-split": [] },
+    { "file": "basic_latin-0070-007F.png", "starts": [ [0, 112] ], "no-split": [] },
+    { "file": "basic_latin-0080-008F.png", "starts": [ [0, 128] ], "no-split": [
+      [2,10], [15,23], [27,35], [39,47],
+      [52,60], [64,72], [77,85], [89,97],
+      [101,109], [113,121], [125,133], [137,145],
+      [150,158], [162,170], [174,182], [187,195]
+    ] },
+    { "file": "latin1-00A0-00AF.png", "starts": [ [0, 160] ], "no-split": [ [1,3] ] },
+    { "file": "latin1-00B0-00BF.png", "starts": [ [0, 176] ], "no-split": [] },
+    { "file": "latin1-00C0-00CF.png", "starts": [ [0, 192] ], "no-split": [] },
+    { "file": "latin1-00D0-00DF.png", "starts": [ [0, 208] ], "no-split": [] },
+    { "file": "latin1-00E0-00EF.png", "starts": [ [0, 224] ], "no-split": [] },
+    { "file": "latin1-00F0-00FF.png", "starts": [ [0, 240] ], "no-split": [] },
+    { "file": "white-square-25A1.png", "starts": [ [0, 9633] ], "no-split": [] },
+    { "file": "replacement-FFFD.png", "starts": [ [0, 65533] ], "no-split": [] }
+  ]
+}
