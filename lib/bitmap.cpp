@@ -10,7 +10,7 @@ namespace draw {
 
 void bitmap::dump(std::FILE* const stream) const {
   auto xb = 0U;  // The x ordinate (in bytes)
-  for (auto const d : data_) {
+  for (auto const d : store_) {
     std::print(stream, "{:08b}", std::to_underlying(d));
     ++xb;
     if (xb >= stride_) {
@@ -36,15 +36,23 @@ void bitmap::copy(bitmap const& source, point dest_pos) {
       }
 
       auto const src_index = (src_y * source.stride_) + (src_x / 8U);
-      assert(src_index < source.data_.size());
+      assert(src_index < source.store_.size());
       auto const dest_index = (dest_y * stride_) + (dest_x / 8U);
-      assert(dest_index < data_.size());
-      auto const src_pixel = source.data_[src_index] & (std::byte{0x80} >> (src_x % 8U));
+      assert(dest_index < store_.size());
+      auto const src_pixel = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
       auto const dest_value = std::byte{0x80} >> (dest_x % 8U);
-      if (src_pixel != std::byte{0}) {
-        data_[dest_index] |= dest_value;
+      if (true) {
+        // This is "or" mode
+        if (src_pixel != std::byte{0}) {
+          store_[dest_index] |= dest_value;
+        }
       } else {
-        data_[dest_index] &= ~dest_value;
+        // "copy" mode.
+        if (src_pixel != std::byte{0}) {
+          store_[dest_index] |= dest_value;
+        } else {
+          store_[dest_index] &= ~dest_value;
+        }
       }
     }
   }
@@ -57,28 +65,36 @@ void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte con
   if (x0 >= width_ || y >= height_) {
     return;
   }
-  x1 = std::min(x1, width_ - 1U);
+  x1 = std::min(x1 + 1U, width_);
   auto byte_index = y * stride_ + x0 / 8U;
-  assert(byte_index < data_.size() && "index is not within the bitmap");
+  assert(byte_index < store_.size() && "index is not within the bitmap");
+  if (x0 / 8U == x1 / 8U) {
+    auto mask0 = static_cast<std::byte>((1U << (8 - (x0 % 8))) - 1U);
+    mask0 &= ~static_cast<std::byte>((1U << (8 - (x1 % 8))) - 1U);
+    auto& b = store_[byte_index];
+    b = (b & ~mask0) | (mask0 & pattern);
+    return;
+  }
+
   {
     auto const mask0 = static_cast<std::byte>((1U << (8 - (x0 % 8))) - 1U);
-    auto& b = data_[byte_index];
+    auto& b = store_[byte_index];
     b = (b & ~mask0) | (mask0 & pattern);
   }
 
   auto xbyte = (x0 / 8U) + 1U;
-  auto last_xbyte = (x1 + 1U) / 8U;
+  auto last_xbyte = x1 / 8U;
   ++byte_index;
   for (; xbyte < last_xbyte; ++xbyte) {
-    assert(byte_index < data_.size() && "index is not within the bitmap");
-    data_[byte_index] = pattern;  // std::byte{0xFF};
+    assert(byte_index < store_.size() && "index is not within the bitmap");
+    store_[byte_index] = pattern;
     ++byte_index;
   }
 
-  if (auto const num_bits = (x1 + 1U) % 8U; num_bits > 0U) {
-    assert(byte_index < data_.size() && "index is not within the bitmap");
+  if (auto const num_bits = x1 % 8U; num_bits > 0U) {
+    assert(byte_index < store_.size() && "index is not within the bitmap");
     auto const mask1 = static_cast<std::byte>((1U << num_bits) - 1U) << (8 - num_bits);
-    auto& b = data_[byte_index];
+    auto& b = store_[byte_index];
     b = (b & ~mask1) | (mask1 & pattern);
   }
 }
@@ -93,43 +109,15 @@ void bitmap::line_vertical(unsigned x, unsigned y0, unsigned y1) {
   if (y0 >= height_) {
     return;
   }
-  y1 = std::min(y1, height_);
-  assert(y0 <= y1);
+  y1 = std::min(y1 + 1U, height_);
+  assert(y0 < y1);
 
   auto index = y0 * stride_ + x / 8;
   auto const bits = std::byte{0x80} >> (x % 8);
-  for (auto y = y0; y <= y1; ++y) {
-    assert(index < data_.size() && "index is not within the bitmap");
-    data_[index] |= bits;
+  for (auto y = y0; y < y1; ++y) {
+    assert(index < store_.size() && "index is not within the bitmap");
+    store_[index] |= bits;
     index += stride_;
-  }
-}
-
-void bitmap::plot_line(unsigned x0, unsigned y0, unsigned x1, unsigned y1) {
-  int dx = std::abs((int)x1 - (int)x0);
-  int sx = x0 < x1 ? 1 : -1;
-  int dy = -std::abs((int)y1 - (int)y0);
-  int sy = y0 < y1 ? 1 : -1;
-  int err = dx + dy;
-
-  for (;;) {
-    this->set(point{.x = static_cast<ordinate>(x0), .y = static_cast<ordinate>(y0)});
-    auto e2 = err * 2;
-    if (e2 >= dy) {
-      if (x0 == x1) {
-        break;
-      }
-      err += dy;
-      x0 += sx;
-    }
-
-    if (e2 <= dx) {
-      if (y0 == y1) {
-        break;
-      }
-      err += dx;
-      y0 += sy;
-    }
   }
 }
 
@@ -155,62 +143,52 @@ void bitmap::line(point p0, point p1) {
   unsigned y0 = p0.y;
   unsigned x1 = p1.x;
   unsigned y1 = p1.y;
-  int dx = std::abs(static_cast<int>(x1) - static_cast<int>(x0));
-  int sx = x0 < x1 ? 1 : -1;
-  int dy = -std::abs(static_cast<int>(y1) - static_cast<int>(y0));
-  int sy = y0 < y1 ? 1 : -1;
-  int err = dx + dy;
+  int sx = p0.x < p1.x ? 1 : -1;
+  int sy = p0.y < p1.y ? 1 : -1;
+  auto const dx = std::abs(static_cast<int>(p1.x) - static_cast<int>(p0.x));
+  auto const dy = -std::abs(static_cast<int>(p1.y) - static_cast<int>(p0.y));
+  auto err = dx + dy;
 
   for (;;) {
-    this->set(point{.x = static_cast<ordinate>(x0), .y = static_cast<ordinate>(y0)});
+    this->set(point{.x = static_cast<ordinate>(p0.x), .y = static_cast<ordinate>(p0.y)}, true);
     auto e2 = err * 2;
     if (e2 >= dy) {
-      if (x0 == x1) {
+      if (p0.x == p1.x) {
         break;
       }
       err += dy;
-      x0 += sx;
+      p0.x += sx;
     }
 
     if (e2 <= dx) {
-      if (y0 == y1) {
+      if (p0.y == p1.y) {
         break;
       }
       err += dx;
-      y0 += sy;
+      p0.y += sy;
     }
   }
 }
 
 void bitmap::frame_rect(rect const& r) {
-  auto x0 = r.left;
-  auto x1 = r.right;
-  auto y0 = r.top;
-  auto y1 = r.bottom;
-  // Normalize the rectangle.
-  if (x0 > x1) {
-    std::swap(x0, x1);
+  if (r.right < r.left || r.bottom < r.top) {
+    return;
   }
-  if (y0 > y1) {
-    std::swap(y0, y1);
-  }
-
-  // Draw the top and bottom lines.
-  this->line(point{.x = x0, .y = y0}, point{.x = x1, .y = y0});
-  this->line(point{.x = x0, .y = y1}, point{.x = x1, .y = y1});
-
-  // Draw the left and right lines.
-  this->line(point{.x = x0, .y = y0}, point{.x = x0, .y = y1});
-  this->line(point{.x = x1, .y = y0}, point{.x = x1, .y = y1});
+  // The top and bottom lines
+  this->line(point{.x = r.left, .y = r.top}, point{.x = r.right, .y = r.top});
+  this->line(point{.x = r.left, .y = r.bottom}, point{.x = r.right, .y = r.bottom});
+  // The left and right lines
+  this->line(point{.x = r.left, .y = r.top}, point{.x = r.left, .y = r.bottom});
+  this->line(point{.x = r.right, .y = r.top}, point{.x = r.right, .y = r.bottom});
 }
 
 pattern const black{.data = {std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF},
                              std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}}};
 pattern const white{.data = {std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
                              std::byte{0x00}, std::byte{0x00}, std::byte{0x00}}};
-pattern const grey{.data = {std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA},
+pattern const gray{.data = {std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA},
                             std::byte{0x55}, std::byte{0xAA}, std::byte{0x55}}};
-pattern const light_grey{.data = {std::byte{0x88}, std::byte{0x42}, std::byte{0x88}, std::byte{0x42}, std::byte{0x88},
+pattern const light_gray{.data = {std::byte{0x88}, std::byte{0x42}, std::byte{0x88}, std::byte{0x42}, std::byte{0x88},
                                   std::byte{0x42}, std::byte{0x88}, std::byte{0x42}}};
 
 void bitmap::paint_rect(rect const& r, pattern const& pat) {
@@ -248,6 +226,13 @@ point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos
   }
 
   return pos;
+}
+
+std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_bitmap_and_store(unsigned width, unsigned height) {
+  auto const size = bitmap::required_store_size(width, height);
+  auto store = std::make_unique<std::byte[]>(size);
+  auto* const ptr = store.get();
+  return std::tuple(std::move(store), bitmap{std::span{ptr, ptr + size}, width, height});
 }
 
 }  // end namespace draw

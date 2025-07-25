@@ -1,0 +1,7 @@
+{
+  "name": "sans32",
+  "spacing": 4,
+  "glyphs": [
+    { "file": "basic_latin-0030-003F.png", "starts": [ [0, 48] ], "no-split": [] }
+  ]
+}

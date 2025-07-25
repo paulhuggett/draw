@@ -2,6 +2,7 @@
 #define GLYPH_CACHE_HPP
 
 #include <cassert>
+#include <optional>
 #include <print>
 #include <vector>
 
@@ -15,30 +16,32 @@ class glyph_cache {
   static constexpr bool trace_unpack = false;
 
 public:
-  explicit constexpr glyph_cache(font const& f) : font_{&f}, cache_bm_{0, this->pixel_height(), this->stride()} {}
+  explicit constexpr glyph_cache(font const& f)
+      : font_{&f}, bitmap_store_{std::size_t{this->stride(f) * this->pixel_height(f)}} {}
 
-  bitmap const& get(char32_t code_point) {
+  [[nodiscard]] bitmap const& get(char32_t code_point) {
     if (code_point == code_point_) {
       return cache_bm_;
     }
-    this->render(code_point, &cache_bm_);
+    cache_bm_ = this->render(*font_, &bitmap_store_, code_point);
     code_point_ = code_point;
     return cache_bm_;
   }
 
-  constexpr unsigned spacing() const { return font_->spacing; }
+  [[nodiscard]] constexpr auto spacing() const noexcept { return font_->spacing; }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  void render(char32_t code_point, bitmap* const bm);
+  static bitmap render(font const& f, std::vector<std::byte>* const bitmap_store, char32_t code_point);
 
-  [[nodiscard]] constexpr unsigned stride() const { return (font_->widest + 7U) / 8U; }
-  [[nodiscard]] constexpr unsigned pixel_height() const { return font_->height * 8U; }
+  [[nodiscard]] static constexpr unsigned stride(font const& f) { return (f.widest + 7U) / 8U; }
+  [[nodiscard]] static constexpr unsigned pixel_height(font const& f) { return f.height * 8U; }
 
   font const* font_;
   // just one entry ATM.
 
-  std::uint32_t code_point_ = 0xFFFF'FFFF;
+  std::optional<std::uint32_t> code_point_;
+  std::vector<std::byte> bitmap_store_;
   /// A bitmap that is large enough to contain the largest glyph in the font.
   bitmap cache_bm_;
 };

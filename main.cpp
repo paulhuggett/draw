@@ -6,29 +6,36 @@
 
 #include "bitmap.hpp"
 #include "glyph_cache.hpp"
-#include "sans.hpp"
+#include "sans16.hpp"
+#include "sans32.hpp"
 
 using namespace std::string_view_literals;
-using draw::grey;
+using draw::bitmap;
+using draw::gray;
 using draw::point;
 using draw::rect;
 
+namespace {
+
+void themometer(bitmap& bmp, rect const& r, float pcnt) {
+  auto fill = r.inset(1, 1);
+  fill.right = r.left + static_cast<draw::ordinate>(std::round(r.width() * pcnt));
+
+  bmp.frame_rect(r);
+  bmp.paint_rect(fill, gray);
+  bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
+}
+
+}  // end anonymous namespace
+
 int main() {
-  draw::bitmap frame_buffer{128U, 32U};
-  draw::glyph_cache gc{sans};
-  // draw_string(screen, gc, u8"Excrétionnaïtreçât!"sv, point{2, 0});
-  draw_string(frame_buffer, gc, u8"Hello World!"sv, point{1, 0});
-  // draw_line(frame_buffer, 0, 30, 100, 3);
+  std::array<std::byte, 128 / 8 * 32> frame_store{};
+  bitmap frame_buffer{frame_store, 128U, 32U};
+  draw::glyph_cache gc16{sans16};
+  // draw::glyph_cache gc32{sans32};
 
-  constexpr auto bar_rect = rect{.top = 18, .left = 4, .bottom = 26, .right = 123};
-  auto fill = bar_rect.inset(1, 1);
-  fill.right = fill.left + std::round(fill.width() * 0.25);
-
-  frame_buffer.frame_rect(bar_rect);
-  frame_buffer.paint_rect(fill, grey);
-  frame_buffer.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
-  // draw_string(screen, gc, u8"100%"sv, point{2, 32});
-
-  frame_buffer.line(point{0, 31}, point{127, 0});
+  draw_string(frame_buffer, gc16, u8"Hello World!"sv, point{2, 0});
+  themometer(frame_buffer, rect{.top = 18, .left = 4, .bottom = 26, .right = 123}, 0.25);
+  // draw_string(frame_buffer, gc32, u8"1234567890"sv, point{sans32.spacing, 0});
   frame_buffer.dump();
 }
