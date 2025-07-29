@@ -140,7 +140,6 @@ type KernDict = dict[int, list[tuple[int, int]]]
 
 
 def write_source_file(font:FontDict, kd:KernDict, height:int, output_dir:pathlib.Path, name:str, spacing:int) -> None:
-    print(kd)
     with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
@@ -239,7 +238,7 @@ def main():
     with open(args.file, 'r', encoding='utf-8') as fp:
       definition = json.load(fp)
     name = definition['name']
-    kp = kern_pairs(definition.get('kern2', {}))
+    kp = kern_pairs(definition.get('kern', {}))
     bfr = build_font(definition['glyphs'], args.file.parent)
     if bfr is None:
         sys.exit(1)
