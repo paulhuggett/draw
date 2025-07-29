@@ -124,7 +124,7 @@ void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) 
   y1 = std::min(static_cast<std::uint16_t>(y1 + 1U), height_);
   assert(y0 < y1);
 
-  auto index = y0 * stride_ + x / 8;
+  auto index = static_cast<unsigned>(y0 * stride_ + x / 8);
   auto const bits = std::byte{0x80} >> (x % 8);
   for (auto y = y0; y < y1; ++y) {
     assert(index < store_.size() && "index is not within the bitmap");
