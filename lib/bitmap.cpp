@@ -23,49 +23,61 @@ void bitmap::dump(std::FILE* const stream) const {
 }
 
 // TODO: this code is functional but should be copying byte-by-byte rather than pixel-by-pixel where possible.
-void bitmap::copy(bitmap const& source, point dest_pos) {
-  auto dest_y = dest_pos.y;
-  for (auto src_y = 0U; src_y < source.height_; ++src_y, ++dest_y) {
-    if (dest_y >= height_) {
-      return;
-    }
-    auto dest_x = dest_pos.x;
-    for (auto src_x = 0U; src_x < source.width_; ++src_x, ++dest_x) {
-      if (dest_x >= width_) {
-        break;
-      }
+void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
+  using uordinate = std::make_unsigned_t<ordinate>;
+  // An initial gross clipping check.
+  if ((dest_pos.x > static_cast<int>(width_)) || (dest_pos.x + static_cast<int>(source.width()) < 0) ||
+      (dest_pos.y > static_cast<int>(height_)) || (dest_pos.y + static_cast<int>(source.height()) < 0)) {
+    return;
+  }
 
+  auto dest_y = std::max(dest_pos.y, ordinate{0});
+  auto const src_y_init = dest_pos.y < 0 ? static_cast<uordinate>(-dest_pos.y) : uordinate{0};
+  auto const src_y_end = std::min(static_cast<int>(source.height_), src_y_init + height_ - dest_y);
+
+  auto const src_x_init = dest_pos.x >= 0 ? 0 : -dest_pos.x;
+  auto const src_x_end =
+      std::min(static_cast<int>(source.width_), src_x_init + width_ - std::max(dest_pos.x, ordinate{0}));
+
+  for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
+    auto dest_x = std::max(dest_pos.x, ordinate{0});
+
+    for (auto src_x = src_x_init; src_x < src_x_end; ++src_x, ++dest_x) {
       auto const src_index = (src_y * source.stride_) + (src_x / 8U);
       assert(src_index < source.store_.size());
+      auto const src_pixel = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
+
       auto const dest_index = (dest_y * stride_) + (dest_x / 8U);
       assert(dest_index < store_.size());
-      auto const src_pixel = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
-      auto const dest_value = std::byte{0x80} >> (dest_x % 8U);
-      if (true) {
-        // This is "or" mode
+      auto const dest_pixel = std::byte{0x80} >> (dest_x % 8U);
+
+      switch (mode) {
+      case transfer_mode::mode_or:
         if (src_pixel != std::byte{0}) {
-          store_[dest_index] |= dest_value;
+          store_[dest_index] |= dest_pixel;
         }
-      } else {
-        // "copy" mode.
+        break;
+      case transfer_mode::mode_copy:
         if (src_pixel != std::byte{0}) {
-          store_[dest_index] |= dest_value;
+          store_[dest_index] |= dest_pixel;
         } else {
-          store_[dest_index] &= ~dest_value;
+          store_[dest_index] &= ~dest_pixel;
         }
+        break;
+      default: assert(false && "unknown transfer mode"); break;
       }
     }
   }
 }
 
-void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte const pattern) {
+void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte const pattern) {
   if (x0 > x1) {
     std::swap(x0, x1);
   }
   if (x0 >= width_ || y >= height_) {
     return;
   }
-  x1 = std::min(x1 + 1U, width_);
+  x1 = std::min(static_cast<std::uint16_t>(x1 + 1U), width_);
   auto byte_index = y * stride_ + x0 / 8U;
   assert(byte_index < store_.size() && "index is not within the bitmap");
   if (x0 / 8U == x1 / 8U) {
@@ -99,7 +111,7 @@ void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte con
   }
 }
 
-void bitmap::line_vertical(unsigned x, unsigned y0, unsigned y1) {
+void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) {
   if (x >= width_) {
     return;
   }
@@ -109,7 +121,7 @@ void bitmap::line_vertical(unsigned x, unsigned y0, unsigned y1) {
   if (y0 >= height_) {
     return;
   }
-  y1 = std::min(y1 + 1U, height_);
+  y1 = std::min(static_cast<std::uint16_t>(y1 + 1U), height_);
   assert(y0 < y1);
 
   auto index = y0 * stride_ + x / 8;
@@ -182,6 +194,14 @@ void bitmap::frame_rect(rect const& r) {
   this->line(point{.x = r.right, .y = r.top}, point{.x = r.right, .y = r.bottom});
 }
 
+std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_bitmap_and_store(std::uint16_t width,
+                                                                               std::uint16_t height) {
+  auto const size = bitmap::required_store_size(width, height);
+  auto store = std::make_unique<std::byte[]>(size);
+  auto* const ptr = store.get();
+  return std::tuple(std::move(store), bitmap{std::span{ptr, ptr + size}, width, height});
+}
+
 pattern const black{.data = {std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF},
                              std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}}};
 pattern const white{.data = {std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
@@ -192,7 +212,10 @@ pattern const light_gray{.data = {std::byte{0x88}, std::byte{0x42}, std::byte{0x
                                   std::byte{0x42}, std::byte{0x88}, std::byte{0x42}}};
 
 void bitmap::paint_rect(rect const& r, pattern const& pat) {
-  if (r.bottom < r.top || r.right < r.left || r.top >= height_) {
+  if (r.bottom < r.top || r.right < r.left || r.top < 0) {
+    return;
+  }
+  if (static_cast<unsigned>(r.top) >= height_) {
     return;
   }
   auto const y0 = static_cast<unsigned>(r.top);
@@ -202,13 +225,68 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
-point draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos) {
+font::glyph const& find_glyph(glyph_cache& gc, char32_t code_point) {
+  struct font const* const font = gc.get_font();
+  auto pos = font->glyphs.find(static_cast<std::uint32_t>(code_point));
+  if (pos == font->glyphs.end()) {
+    pos = font->glyphs.find(white_square);
+    if (pos == font->glyphs.end()) {
+      // We've got no definition for the requested code point and no definition for U+25A1 (WHITE SQUARE). Last resort
+      // is just the first glyph.
+      pos = font->glyphs.begin();
+    }
+  }
+  return pos->second;
+}
+
+ordinate draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos) {
   bitmap const& bm = gc.get(code_point);
-  dest.copy(bm, pos);
-  return point{static_cast<decltype(point::x)>(pos.x + bm.width() + gc.spacing()), pos.y};
+  dest.copy(bm, pos, bitmap::transfer_mode::mode_or);
+  return bm.width();
 }
 
 point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos) {
+  std::optional<char32_t> prev_cp;
+
+  icubaby::t8_32 transcoder;
+  std::array<char32_t, 1> code_point_buffer{};
+  auto width = ordinate{0};
+
+  auto const begin = std::begin(code_point_buffer);
+  for (auto const cu : s) {
+    if (auto const it = transcoder(cu, begin); it != begin) {
+      // We have a code point.
+      assert(std::distance(begin, it) == 1);
+      auto const code_point = *begin;
+      font::glyph const& g = find_glyph(gc, *begin);
+      if (prev_cp) {
+        auto const kerning_pairs = std::get<std::span<kerning_pair const>>(g);
+        auto const kerning_pairs_end = std::end(kerning_pairs);
+        if (auto const kern_pos =
+                std::find_if(std::begin(kerning_pairs), kerning_pairs_end,
+                             [&prev_cp](kerning_pair const& kp) { return kp.preceeding == prev_cp.value(); });
+            kern_pos != kerning_pairs_end) {
+          assert(width >= kern_pos->distance);
+          width -= kern_pos->distance;
+        }
+      }
+      pos.x += width;
+      width = draw_char(dest, gc, code_point, pos);
+      pos.x += gc.spacing();
+      prev_cp = *begin;
+    }
+  }
+  if (auto const it = transcoder.end_cp(begin); it != begin) {
+    assert(it == begin + 1);
+    width = draw_char(dest, gc, *begin, pos);
+  }
+
+  return pos;
+}
+
+// FIXME: needs an implementation
+unsigned string_width(glyph_cache& gc, std::u8string_view s) {
+  unsigned width = 0U;
   icubaby::t8_32 transcoder;
   std::array<char32_t, 1> code_point_buffer{};
 
@@ -217,22 +295,15 @@ point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos
     if (auto const it = transcoder(cu, begin); it != begin) {
       // We have a code point.
       assert(it == begin + 1);
-      pos = draw_char(dest, gc, *begin, pos);
+      // pos = draw_char(dest, gc, *begin, pos);
     }
   }
   if (auto const it = transcoder.end_cp(begin); it != begin) {
     assert(it == begin + 1);
-    pos = draw_char(dest, gc, *begin, pos);
+    // pos = draw_char(dest, gc, *begin, pos);
   }
 
-  return pos;
-}
-
-std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_bitmap_and_store(unsigned width, unsigned height) {
-  auto const size = bitmap::required_store_size(width, height);
-  auto store = std::make_unique<std::byte[]>(size);
-  auto* const ptr = store.get();
-  return std::tuple(std::move(store), bitmap{std::span{ptr, ptr + size}, width, height});
+  return width;
 }
 
 }  // end namespace draw

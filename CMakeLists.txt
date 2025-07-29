@@ -6,6 +6,22 @@ if (NOT Python3_Interpreter_FOUND)
   message(FATAL_ERROR "Python3 interpreter not found") 
 endif()
 
+function(setup_target target)
+  target_compile_features(${target} PRIVATE cxx_std_23)
+  target_compile_options(${target} PRIVATE
+    -Weverything
+    -Wno-c++20-compat
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-covered-switch-default
+    -Wno-exit-time-destructors
+    -Wno-global-constructors
+    -Wno-padded
+    -Wno-poison-system-directories
+  )
+endfunction(setup_target)
+
+
 add_subdirectory(lib)
 
 add_custom_target(buildfonts
@@ -42,7 +58,8 @@ add_custom_target(buildfonts
     sans_font/16/white-square-25A1.png
     sans_font/16/replacement-FFFD.png
     sans_font/32/sans32.json
-    sans_font/16/basic_latin-0030-003F.png
+    sans_font/32/basic_latin-0020-002F.png
+    sans_font/32/basic_latin-0030-003F.png
 )
 
 add_executable(draw_demo)
@@ -58,18 +75,8 @@ target_include_directories(draw_demo PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}"
 )
-target_compile_features(draw_demo PRIVATE cxx_std_23)
-target_compile_options(draw_demo PRIVATE 
-  -Weverything
-  -Wno-c++20-compat
-  -Wno-c++98-compat
-  -Wno-c++98-compat-pedantic
-  -Wno-exit-time-destructors
-  -Wno-global-constructors
-  -Wno-padded
-  -Wno-poison-system-directories
-)
 target_link_libraries(draw_demo PRIVATE draw)
+setup_target(draw_demo)
 
 
 # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"

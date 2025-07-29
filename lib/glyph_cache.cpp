@@ -3,7 +3,7 @@
 namespace draw {
 
 bitmap glyph_cache::render(font const& f, std::vector<std::byte>* const bitmap_store, char32_t code_point) {
-  auto height = f.height * 8U;
+  auto height = static_cast<std::uint16_t>(f.height * 8);
 
   auto pos = f.glyphs.find(static_cast<std::uint32_t>(code_point));
   if (pos == f.glyphs.end()) {
@@ -16,7 +16,8 @@ bitmap glyph_cache::render(font const& f, std::vector<std::byte>* const bitmap_s
     }
   }
 
-  auto width = static_cast<unsigned>(pos->second.size() / f.height);
+  auto const& bitmaps = std::get<std::span<std::byte const>>(pos->second);
+  auto width = static_cast<std::uint16_t>(bitmaps.size() / f.height);
   bitmap bm{*bitmap_store, width, height};
   for (auto y = std::size_t{0}; y < height; ++y) {
     if constexpr (trace_unpack) {
@@ -25,8 +26,8 @@ bitmap glyph_cache::render(font const& f, std::vector<std::byte>* const bitmap_s
     // TODO: write output one byte directly to the store at a time rather than one pixel via the API.
     for (auto x = 0U; x < width; ++x) {
       auto const src_index = (x * f.height) + (y / 8U);
-      assert(src_index < pos->second.size() && "The source byte is not within the bitmap");
-      auto const pixel = pos->second[src_index] & (std::byte{1} << (y % 8U));
+      assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
+      auto const pixel = bitmaps[src_index] & (std::byte{1} << (y % 8U));
       bm.set(point{.x = static_cast<ordinate>(x), .y = static_cast<ordinate>(y)}, pixel != std::byte{0});
       if constexpr (trace_unpack) {
         std::print("{}", pixel != std::byte{0} ? 'X' : ' ');

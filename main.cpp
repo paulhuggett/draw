@@ -22,7 +22,7 @@ void themometer(bitmap& bmp, rect const& r, float pcnt) {
   fill.right = r.left + static_cast<draw::ordinate>(std::round(r.width() * pcnt));
 
   bmp.frame_rect(r);
-  bmp.paint_rect(fill, gray);
+  bmp.paint_rect(fill, draw::light_gray);
   bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
 }
 
@@ -32,10 +32,15 @@ int main() {
   std::array<std::byte, 128 / 8 * 32> frame_store{};
   bitmap frame_buffer{frame_store, 128U, 32U};
   draw::glyph_cache gc16{sans16};
-  // draw::glyph_cache gc32{sans32};
+  draw::glyph_cache gc32{sans32};
 
-  draw_string(frame_buffer, gc16, u8"Hello World!"sv, point{2, 0});
-  themometer(frame_buffer, rect{.top = 18, .left = 4, .bottom = 26, .right = 123}, 0.25);
-  // draw_string(frame_buffer, gc32, u8"1234567890"sv, point{sans32.spacing, 0});
+  for (auto ctr = 0; ctr < 1; ++ctr) {
+    // draw_string(frame_buffer, gc16, u8"Hello World!"sv, point{2, 0});
+    // themometer(frame_buffer, rect{.top = 18, .left = 4, .bottom = 26, .right = 123}, 0.25);
+    auto right = draw_string(frame_buffer, gc32,
+                             u8"attempt to disvalue, muzzle the afghan czech czar and exninja, bob bixby dvorak"sv,
+                             point{-000 /*sans32.spacing*/, 0});
+    // frame_buffer.frame_rect(draw::rect{.left=0, .top=0, .right=right.x, .bottom=31});
+  }
   frame_buffer.dump();
 }

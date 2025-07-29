@@ -1,6 +1,6 @@
 {
   "name": "sans16",
-  "spacing": 2,
+  "spacing": 1,
   "glyphs": [
     { "file": "basic_latin-0000-000F.png", "starts": [ [0, 0] ], "no-split": [
       [2,10], [15,23], [27,35], [39,47],

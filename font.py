@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing import Any
 import argparse
 import json
 import os
@@ -7,7 +8,6 @@ import sys
 import unicodedata
 # 3rd party
 import png
-from typing import Any
 
 REPLACEMENT_CHAR = 0xFFFD
 
@@ -28,52 +28,51 @@ def is_splitable(no_split:SplitList, x:int) -> tuple[SplitList, bool]:
             no_split = no_split[1:]  # Remove this region from the no-split list
     return (no_split, splitable)
 
+def read_png(file:pathlib.Path):
+  reader = png.Reader(filename=file)
+  width, height, pixels, metadata = reader.asRGBA8()
+  pixels = list(pixels)
+  if metadata['bitdepth'] != 8:
+      raise RuntimeError("File {file} does not have a bitdepth of 8")
+  if metadata['planes'] != 4:
+      raise RuntimeError("File {file} does not have 4 planes: expected RGBA format")
+  if height % 8 != 0:
+      raise 'Height must be a multiple of 8!'
+  return width, height, pixels
 
 type InputList = list[dict[str, Any]]
 
-def build_font(inputs:InputList, parent:pathlib.Path) -> tuple[FontDict, int] | None:
+def build_font(inputs:InputList, parent:pathlib.Path) -> tuple[FontDict, int]:
     all_code_points:FontDict = {}
     all_patterns:dict[int, int] = {} # Map a hash of the bitmap to the corresponding code point.
     code_point = ord('!')
 
     height = None
     if len(inputs) == 0:
-        print('No inputs specified!')
-        return None
+        raise RuntimeError('No inputs specified!')
+
     for f in inputs:
         file = parent / pathlib.Path(f['file'])
         if not file.exists():
-            print(f'File {file} does not exist!')
-            return None
+            raise RuntimeError(f'File {file} does not exist!')
+
         # 'starts' is a list of two-tuples (x, code_point) where x is the x-coordinate of the
         # column and code_point is the Unicode code point for that column.
         starts = dict(f["starts"])
         # 'nosplit' is a list of empty column pairs that should not cause a split for a new glyph.
         no_split:SplitList = sorted(f['no-split'], key=lambda x: x[0])
 
-        reader = png.Reader(filename=file)
-        width, height2, pixels, metadata = reader.asRGBA8()
-        pixels = list(pixels)
-        if metadata['bitdepth'] != 8:
-            print(f'File {file} does not have a bitdepth of 8')
-            return None
-        if metadata['planes'] != 4:
-            print(f'File {file} does not have 4 planes: expected RGBA format')
-            return None
+        width, height2, pixels = read_png(file)
         if height is None:
             height = height2
-        if height2 != height:
-            print(f'Height of {file} does not match previous height of {height}!')
-            return None
-        if height % 8 != 0:
-            print('Height must be a multiple of 8!')
-            return None
+        elif height2 != height:
+            raise RuntimeError(f'Height of {file} does not match previous height of {height}!')
 
         column_size = height // 8
         empty_column = [0] * column_size
         columns:list[int] = [] # The columns that make up an individual character
 
-        no_split += [(width, width)] # Guarantees that the no_split list will not be empty
+        no_split += [(width, width)] # Guarantees that no_split[] will not be empty
 
         for x in range(0, width):
             code_point = starts.get(x, code_point)
@@ -128,33 +127,42 @@ def dump_char(glyph:tuple[int, ...] | int, height:int) -> None:
 def write_header_file(output_dir:pathlib.Path, name:str) -> None:
     with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as header:
         guard = name.upper() + '_HPP'
-        header.write(SIGNATURE)
-        header.write(f'''#ifndef {guard}
+        header.write(f'''{SIGNATURE}
+#ifndef {guard}
 #define {guard}
 struct font;
 extern font const {name};
 #endif // {guard}
 ''')
 
+type JsonKernList = dict[str, tuple[str, int]]
+type KernDict = dict[int, list[tuple[int, int]]]
 
-def write_source_file(font:FontDict, height:int, output_dir:pathlib.Path, name:str, spacing:int) -> None:
+
+def write_source_file(font:FontDict, kd:KernDict, height:int, output_dir:pathlib.Path, name:str, spacing:int) -> None:
+    print(kd)
     with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
         source.write('''
 #include "font.hpp"
+#include "types.hpp"
 #include <array>
 #include <cassert>
-        
+using namespace draw::literals;
 namespace {
-consteval std::byte operator""_b(unsigned long long arg) noexcept {
-  assert(arg < 256);
-  return static_cast<std::byte>(arg);
-}
 ''')
         widest = 0
         baseline = 32 - 8
         for k, v in font.items():
+            if k in kd:
+                source.write(f'std::array const kern_{k:04x} = {{')
+                separator = ''
+                for prev_cp, distance in kd[k]:
+                    source.write(f'{separator}kerning_pair{{.preceeding={prev_cp},.distance={distance}}}')
+                    separator = ','
+                source.write('};\n')
+
             if not isinstance(v, int):
                 widest = max(widest, len(v) // height)
                 source.write(f'std::array const bitmap_{k:04x} = {{')
@@ -173,11 +181,53 @@ font const {name} {{
   .glyphs={{
 ''')
         for k, v in font.items():
-            name = unicodedata.name(chr(k), 'UNKNOWN')
+            name = unicodedata.name(chr(k), '')
+            if len(name) > 0:
+              name = "// " + name;
+
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
-            source.write(f'    {{ {k:#04x}, std::span{{bitmap_{bm:04x}}} }}, // {name}\n')
+            kp_name = f'kern_{k:04x}' if k in kd else ''
+            source.write(f'    {{ {k:#04x}, std::tuple{{std::span<kerning_pair const>{{{kp_name}}}, std::span{{bitmap_{bm:04x}}}}} }}, {name}\n')
         source.write('  }\n};\n')
+
+def str_to_cp(s) -> int:
+  if not isinstance(s, str):
+    return s
+  if len(s) != 1:
+    raise RuntimeError("string must be one character")
+  return ord(s[0])
+
+def uniqued(iterable, key=None):
+    if key is None:
+        key = lambda v: v
+    seen = set()
+    for v in iterable:
+        k = key(v)
+        if k not in seen:
+            seen.add(k)
+            yield v
+
+def kern_pairs(kl:JsonKernList) -> KernDict:
+  '''The kern list is a series of tuples which represent the previous code point, the current code point, 
+  and the distance by which the spacing between the glyphs should be reduced. The two code points
+  can be specified as either integers or strings of length 1.
+
+  Returns a dictionary whose keys are the current code points and whose values are a list of tuples for the 
+  previous code point and distance.
+  '''
+
+  kernd:KernDict = {}
+  for k,v in kl.items():
+    for k2, dist in v:
+      prev_cp = k
+      curr_cp = k2
+      distance = dist
+      d = kernd.setdefault(str_to_cp(curr_cp), [])
+      d += [(str_to_cp(prev_cp), distance)]
+  key = lambda x:x[0]
+  return { k: sorted(uniqued(v, key=key), key=key) for k,v in kernd.items() }
+
 
 def main():
     parser = argparse.ArgumentParser(description='Font Generator')
@@ -189,6 +239,7 @@ def main():
     with open(args.file, 'r', encoding='utf-8') as fp:
       definition = json.load(fp)
     name = definition['name']
+    kp = kern_pairs(definition.get('kern2', {}))
     bfr = build_font(definition['glyphs'], args.file.parent)
     if bfr is None:
         sys.exit(1)
@@ -202,7 +253,7 @@ def main():
             print()
 
     write_header_file(args.output_dir, definition['name'])
-    write_source_file(font, height, args.output_dir, definition['name'], definition.get('spacing', 0))
+    write_source_file(font, kp, height, args.output_dir, definition['name'], definition.get('spacing', 0))
     sys.exit(0)
 
 if __name__ == '__main__':

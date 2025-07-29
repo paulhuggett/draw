@@ -29,6 +29,7 @@ public:
   }
 
   [[nodiscard]] constexpr auto spacing() const noexcept { return font_->spacing; }
+  [[nodiscard]] font const* get_font() const noexcept { return font_; }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.

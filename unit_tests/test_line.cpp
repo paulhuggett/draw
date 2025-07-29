@@ -6,13 +6,9 @@
 #include "bitmap.hpp"
 
 using testing::ElementsAre;
+using namespace draw::literals;
 
 namespace {
-
-consteval std::byte operator""_b(unsigned long long arg) noexcept {
-  assert(arg < 256);
-  return static_cast<std::byte>(arg);
-}
 
 TEST(Line, ShortHorizontal) {
   auto [store, bmp] = draw::create_bitmap_and_store(16, 8);
