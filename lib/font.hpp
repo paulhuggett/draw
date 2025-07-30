@@ -7,8 +7,9 @@
 #include <tuple>
 #include <unordered_map>
 
+namespace draw {
+
 constexpr auto white_square = std::uint32_t{0x25A1};
-// constexpr auto replacement_char = std::uint32_t{0xFFFD};
 
 struct kerning_pair {
   /// Code point of the preceeding glyph
@@ -25,5 +26,7 @@ struct font {
   using glyph = std::tuple<std::span<kerning_pair const>, std::span<std::byte const>>;
   std::unordered_map<std::uint32_t, glyph> glyphs;
 };
+
+}  // end namespace draw
 
 #endif  // FONT_HPP

@@ -34,5 +34,10 @@
     { "file": "latin1-00F0-00FF.png", "starts": [ [0, 240] ], "no-split": [] },
     { "file": "white-square-25A1.png", "starts": [ [0, 9633] ], "no-split": [] },
     { "file": "replacement-FFFD.png", "starts": [ [0, 65533] ], "no-split": [] }
-  ]
+  ],
+  "kern": {
+    "A": [["t",1]],
+    "R": [["e",1]],
+    "a": [["y",1]]
+  }
 }

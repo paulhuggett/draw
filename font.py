@@ -130,8 +130,8 @@ def write_header_file(output_dir:pathlib.Path, name:str) -> None:
         header.write(f'''{SIGNATURE}
 #ifndef {guard}
 #define {guard}
-struct font;
-extern font const {name};
+namespace draw {{ struct font; }}
+extern draw::font const {name};
 #endif // {guard}
 ''')
 
@@ -149,6 +149,8 @@ def write_source_file(font:FontDict, kd:KernDict, height:int, output_dir:pathlib
 #include <array>
 #include <cassert>
 using namespace draw::literals;
+using draw::kerning_pair;
+using glyph = draw::font::glyph;
 namespace {
 ''')
         widest = 0
@@ -172,7 +174,7 @@ namespace {
                 source.write('};\n')
 
         source.write(f'''}} // end ananymous namespace
-font const {name} {{
+draw::font const {name} {{
   .baseline={baseline},
   .widest={widest},
   .height={height},
@@ -186,8 +188,8 @@ font const {name} {{
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
-            kp_name = f'kern_{k:04x}' if k in kd else ''
-            source.write(f'    {{ {k:#04x}, std::tuple{{std::span<kerning_pair const>{{{kp_name}}}, std::span{{bitmap_{bm:04x}}}}} }}, {name}\n')
+            kp_name = f'kern_{k:04x}' if k in kd else '{}'
+            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {name}\n')
         source.write('  }\n};\n')
 
 def str_to_cp(s) -> int:
