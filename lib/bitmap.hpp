@@ -5,8 +5,8 @@
 #include <array>
 #include <cassert>
 #include <cstdlib>
+#include <limits>
 #include <memory>
-#include <print>
 #include <ranges>
 #include <tuple>
 
@@ -24,29 +24,37 @@ public:
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height, std::uint16_t stride) noexcept
       : store_{store}, width_{width}, height_{height}, stride_{stride} {
     assert(store.size() >= this->actual_store_size());
+    constexpr auto max = static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max());
+    assert(width <= max);
+    assert(height <= max);
   }
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height) noexcept
       : bitmap(store, width, height, (width + 7U) / 8U) {}
 
   /// Returns the store size required for a bitmap with the supplied dimensions.
   static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
+    constexpr auto max = static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max());
+    assert(width <= max);
+    assert(height <= max);
     return (width + 7U) / 8U * height;
   }
 
   enum class transfer_mode { mode_copy, mode_or };
   void copy(bitmap const& source, point dest_pos, transfer_mode mode);
   void clear() { std::ranges::fill(this->store(), std::byte{0}); }
-  bool set(point p, bool new_state) {
+  bool set(point const p, bool const new_state) {
     if (p.x < 0 || p.y < 0) {
       return false;
     }
-    if (static_cast<unsigned>(p.x) >= width_ || static_cast<unsigned>(p.y) >= height_) {
+    auto const x = static_cast<unsigned>(p.x);
+    auto const y = static_cast<unsigned>(p.y);
+    if (x >= width_ || y >= height_) {
       return false;
     }
-    auto const index = p.y * stride_ + p.x / 8U;
+    auto const index = y * stride_ + x / 8U;
     assert(index < this->actual_store_size());
     auto& b = store_[index];
-    auto const bit = std::byte{0x80} >> (p.x % 8U);
+    auto const bit = std::byte{0x80} >> (x % 8U);
     if (new_state) {
       b |= bit;
     } else {

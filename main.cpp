@@ -36,10 +36,10 @@ int main() {
 
   for (auto ctr = 0; ctr < 1; ++ctr) {
     // draw_string(frame_buffer, gc16, u8"Hello World!"sv, point{2, 0});
-    // themometer(frame_buffer, rect{.top = 18, .left = 4, .bottom = 26, .right = 123}, 0.25);
-    auto right = draw_string(frame_buffer, gc32,
-                             u8"attempt to disvalue, muzzle the afghan czech czar and exninja, bob bixby dvorak"sv,
-                             point{-000 /*sans32.spacing*/, 0});
+    themometer(frame_buffer, rect{.top = 26, .left = 0, .bottom = 31, .right = 127}, 0.25);
+    /*auto right =*/draw_string(frame_buffer, gc16, u8"Attack Decay"sv, point{1 /*sans32.spacing*/, -1});
+    /*auto right =*/draw_string(frame_buffer, gc16, u8"Sustain Release"sv, point{1 /*sans32.spacing*/, 11});
+
     // frame_buffer.frame_rect(draw::rect{.left=0, .top=0, .right=right.x, .bottom=31});
   }
   frame_buffer.dump();
