@@ -126,7 +126,7 @@ def dump_char(glyph:tuple[int, ...] | int, height:int) -> None:
 
 def write_header_file(output_dir:pathlib.Path, name:str) -> None:
     with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as header:
-        guard = name.upper() + '_HPP'
+        guard = 'DRAW_FONT_' + name.upper() + '_HPP'
         header.write(f'''{SIGNATURE}
 #ifndef {guard}
 #define {guard}

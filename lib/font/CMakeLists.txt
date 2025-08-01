@@ -40,6 +40,9 @@ target_sources(draw-font PRIVATE
   "${CMAKE_CURRENT_BINARY_DIR}/sans16.hpp"
   "${CMAKE_CURRENT_BINARY_DIR}/sans32.cpp"
   "${CMAKE_CURRENT_BINARY_DIR}/sans32.hpp"
+  font.py
+  sans_font/16/sans16.json
+  sans_font/32/sans32.json
 )
 target_include_directories(draw-font PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(draw-font PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
