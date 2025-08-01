@@ -29,14 +29,16 @@ public:
     assert(height <= max);
   }
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height) noexcept
-      : bitmap(store, width, height, (width + 7U) / 8U) {}
+      : bitmap(store, width, height, required_stride(width)) {}
 
+  static constexpr std::uint16_t required_stride(std::uint16_t width) noexcept {
+    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()));
+    return (width + 7U) / 8U;
+  }
   /// Returns the store size required for a bitmap with the supplied dimensions.
   static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
-    constexpr auto max = static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max());
-    assert(width <= max);
-    assert(height <= max);
-    return (width + 7U) / 8U * height;
+    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()));
+    return required_stride(width) * height;
   }
 
   enum class transfer_mode { mode_copy, mode_or };
@@ -100,10 +102,10 @@ extern pattern const gray;
 extern pattern const light_gray;
 
 class glyph_cache;
-ordinate draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos);
+void draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos);
 point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos);
 
-unsigned string_width(glyph_cache& gc, std::u8string_view s);
+ordinate string_width(glyph_cache& gc, std::u8string_view s);
 
 }  // end namespace draw
 

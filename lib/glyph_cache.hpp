@@ -23,17 +23,18 @@ public:
     if (code_point == code_point_) {
       return cache_bm_;
     }
-    cache_bm_ = this->render(*font_, &bitmap_store_, code_point);
+    cache_bm_ = this->render(&bitmap_store_, code_point);
     code_point_ = code_point;
     return cache_bm_;
   }
 
-  [[nodiscard]] constexpr auto spacing() const noexcept { return font_->spacing; }
+  [[nodiscard]] font::glyph const* find_glyph(char32_t code_point);
   [[nodiscard]] font const* get_font() const noexcept { return font_; }
+  [[nodiscard]] constexpr std::uint8_t spacing() const noexcept { return font_->spacing; }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  static bitmap render(font const& f, std::vector<std::byte>* const bitmap_store, char32_t code_point);
+  bitmap render(std::vector<std::byte>* const bitmap_store, char32_t code_point);
 
   [[nodiscard]] static constexpr unsigned stride(font const& f) { return (f.widest + 7U) / 8U; }
   [[nodiscard]] static constexpr unsigned pixel_height(font const& f) { return f.height * 8U; }

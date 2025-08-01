@@ -23,7 +23,14 @@ struct font {
   std::uint8_t widest;
   std::uint8_t height;  // in bytes rather than pixels.
   std::uint8_t spacing;
+
   using glyph = std::tuple<std::span<kerning_pair const>, std::span<std::byte const>>;
+
+  constexpr std::uint16_t width(glyph const& g) const noexcept {
+    auto const& bitmap = std::get<std::span<std::byte const>>(g);
+    return static_cast<std::uint16_t>(bitmap.size() / this->height);
+  }
+
   std::unordered_map<std::uint32_t, glyph> glyphs;
 };
 

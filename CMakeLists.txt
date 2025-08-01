@@ -62,6 +62,21 @@ add_custom_target(buildfonts
     sans_font/32/basic_latin-0030-003F.png
 )
 
+
+#
+# Draw Demo
+#
+find_package(Curses)
+if(Curses_FOUND AND NOT TARGET Curses::Curses)
+  add_library(Curses::Curses INTERFACE IMPORTED)
+  set_target_properties(
+    Curses::Curses
+    PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${CURSES_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${CURSES_INCLUDE_DIRS}"
+  )
+endif()
+
 add_executable(draw_demo)
 add_dependencies(draw_demo buildfonts)
 target_sources(draw_demo PRIVATE
@@ -76,7 +91,10 @@ target_include_directories(draw_demo PRIVATE
   "${CMAKE_CURRENT_BINARY_DIR}"
 )
 target_link_libraries(draw_demo PRIVATE draw)
+target_link_libraries(draw_demo PRIVATE Curses::Curses)
 setup_target(draw_demo)
+
+
 
 
 # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
