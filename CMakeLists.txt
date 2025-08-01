@@ -24,78 +24,6 @@ endfunction(setup_target)
 
 add_subdirectory(lib)
 
-add_custom_target(buildfonts
-  COMMAND
-    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}" sans_font/16/sans16.json
-  COMMAND
-    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}" sans_font/32/sans32.json
-  DEPENDS font.py
-  BYPRODUCTS
-    "${CMAKE_CURRENT_BINARY_DIR}/sans16.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans16.hpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans32.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans32.hpp"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  COMMENT "Building Sans Font"
-  SOURCES
-    font.py
-    sans_font/16/sans16.json
-    sans_font/16/basic_latin-0000-000F.png
-    sans_font/16/basic_latin-0010-001F.png
-    sans_font/16/basic_latin-0020-002F.png
-    sans_font/16/basic_latin-0030-003F.png
-    sans_font/16/basic_latin-0040-004F.png
-    sans_font/16/basic_latin-0050-005F.png
-    sans_font/16/basic_latin-0060-006F.png
-    sans_font/16/basic_latin-0070-007F.png
-    sans_font/16/basic_latin-0080-008F.png
-    sans_font/16/latin1-00A0-00AF.png
-    sans_font/16/latin1-00B0-00BF.png
-    sans_font/16/latin1-00C0-00CF.png
-    sans_font/16/latin1-00D0-00DF.png
-    sans_font/16/latin1-00E0-00EF.png
-    sans_font/16/latin1-00F0-00FF.png
-    sans_font/16/white-square-25A1.png
-    sans_font/16/replacement-FFFD.png
-    sans_font/32/sans32.json
-    sans_font/32/basic_latin-0020-002F.png
-    sans_font/32/basic_latin-0030-003F.png
-)
-
-
-#
-# Draw Demo
-#
-find_package(Curses)
-if(Curses_FOUND AND NOT TARGET Curses::Curses)
-  add_library(Curses::Curses INTERFACE IMPORTED)
-  set_target_properties(
-    Curses::Curses
-    PROPERTIES
-      INTERFACE_LINK_LIBRARIES "${CURSES_LIBRARIES}"
-      INTERFACE_INCLUDE_DIRECTORIES "${CURSES_INCLUDE_DIRS}"
-  )
-endif()
-
-add_executable(draw_demo)
-add_dependencies(draw_demo buildfonts)
-target_sources(draw_demo PRIVATE
-  main.cpp
-  "${CMAKE_CURRENT_BINARY_DIR}/sans16.cpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans16.hpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans32.cpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans32.hpp"
-)
-target_include_directories(draw_demo PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_BINARY_DIR}"
-)
-target_link_libraries(draw_demo PRIVATE draw)
-target_link_libraries(draw_demo PRIVATE Curses::Curses)
-setup_target(draw_demo)
-
-
-
 
 # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
 # on Windows.
@@ -103,6 +31,7 @@ set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
 # We don't want to install either gtest or gmock.
 set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
 set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/googletest")
+add_subdirectory(googletest)
 
 add_subdirectory(unit_tests)
+add_subdirectory(demo)

@@ -3,11 +3,13 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <cstdlib>
 #include <limits>
 #include <memory>
 #include <ranges>
+#include <span>
 #include <tuple>
 
 #include "types.hpp"
