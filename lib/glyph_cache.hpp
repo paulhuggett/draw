@@ -28,7 +28,7 @@ public:
     return cache_bm_;
   }
 
-  [[nodiscard]] font::glyph const* find_glyph(char32_t code_point);
+  [[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
   [[nodiscard]] font const* get_font() const noexcept { return font_; }
   [[nodiscard]] constexpr std::uint8_t spacing() const noexcept { return font_->spacing; }
 

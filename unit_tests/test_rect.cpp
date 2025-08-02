@@ -5,6 +5,7 @@
 
 namespace draw {
 
+void PrintTo(rect const& r, std::ostream* os);
 void PrintTo(rect const& r, std::ostream* os) {
   *os << "{.top=" << r.top << ",.left=" << r.left << ",.bottom=" << r.bottom << ",.right=" << r.right << '}';
 }

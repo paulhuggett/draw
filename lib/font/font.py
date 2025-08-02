@@ -239,7 +239,6 @@ def main():
 
     with open(args.file, 'r', encoding='utf-8') as fp:
       definition = json.load(fp)
-    name = definition['name']
     kp = kern_pairs(definition.get('kern', {}))
     bfr = build_font(definition['glyphs'], args.file.parent)
     if bfr is None:

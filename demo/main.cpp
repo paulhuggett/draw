@@ -41,14 +41,14 @@ void show(bitmap const& bmp) {
   auto xb = 0U;  // The x ordinate (in bytes)
   auto yb = 0U;
   for (auto const d : bmp.store()) {
-    for (auto bit = 0; bit < 8; ++bit) {
-      mvprintw(yb, (xb * 8U) + bit, "%c", (d & (0x80_b >> bit)) != 0_b ? 'X' : ' ');
+    for (auto bit = 0U; bit < 8U; ++bit) {
+      mvprintw(static_cast<int>(yb), static_cast<int>((xb * 8U) + bit), "%c", (d & (0x80_b >> bit)) != 0_b ? 'X' : ' ');
     }
     ++xb;
     if (xb >= bmp.stride()) {
       // The end of a scan-line.
-      xb = 0;
-      yb += 1U;
+      xb = 0U;
+      ++yb;
     }
   }
 }
@@ -66,20 +66,22 @@ int main() {
   draw::glyph_cache gc32{sans32};
 
   auto count = 0;
-  while (1) {
+  for (;;) {
     frame_buffer.clear();
 
-    themometer(frame_buffer, rect{.top = 26, .left = 0, .bottom = 31, .right = 127}, (count % 100) / 100.0);
-    std::array<char8_t, 32> str;
-    auto len = std::snprintf(std::bit_cast<char*>(str.data()), str.size(), "%d", count);
-    ++count;
-    std::u8string_view s{str.data(), static_cast<std::size_t>(len)};
-    auto const swidth = std::min(draw::string_width(gc32, s), ordinate{128});
-    draw_string(frame_buffer, gc32, s, point{static_cast<ordinate>(128 - swidth), -1});
+    themometer(frame_buffer, rect{.top = 26, .left = 0, .bottom = 31, .right = 127}, (count % 100) / 100.0F);
+    std::array<char8_t, 32> str_buffer;
+    auto const first = std::begin(str_buffer);
+    auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
+    std::u8string_view const str_view{first, last};
+    auto const swidth = std::min(draw::string_width(gc32, str_view), ordinate{128});
+    draw_string(frame_buffer, gc32, str_view, point{static_cast<ordinate>(128 - swidth), -1});
 
     show(frame_buffer);
     refresh();
     std::this_thread::sleep_for(500ms);
+
+    ++count;
   }
   endwin();
 }

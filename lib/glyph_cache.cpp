@@ -2,7 +2,7 @@
 
 namespace draw {
 
-font::glyph const* glyph_cache::find_glyph(char32_t code_point) {
+font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
   auto pos = font_->glyphs.find(static_cast<std::uint32_t>(code_point));
   auto end = font_->glyphs.end();
   if (pos == end) {

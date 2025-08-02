@@ -18,6 +18,8 @@ struct font;
 
 namespace draw {
 
+class glyph_cache;
+
 class bitmap {
   friend class glyph_cache;
 
@@ -103,7 +105,6 @@ extern pattern const white;
 extern pattern const gray;
 extern pattern const light_gray;
 
-class glyph_cache;
 void draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos);
 point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos);
 

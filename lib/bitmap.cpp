@@ -43,6 +43,7 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
     auto dest_x = std::max(dest_pos.x, ordinate{0});
 
     for (auto src_x = src_x_init; src_x < src_x_end; ++src_x, ++dest_x) {
+      assert(src_x >= 0);
       auto const src_index = (src_y * source.stride_) + (src_x / 8U);
       assert(src_index < source.store_.size());
       auto const src_pixel = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
@@ -151,12 +152,8 @@ void bitmap::line(point p0, point p1) {
     return;
   }
 
-  unsigned x0 = p0.x;
-  unsigned y0 = p0.y;
-  unsigned x1 = p1.x;
-  unsigned y1 = p1.y;
-  int sx = p0.x < p1.x ? 1 : -1;
-  int sy = p0.y < p1.y ? 1 : -1;
+  auto const sx = p0.x < p1.x ? 1 : -1;
+  auto const sy = p0.y < p1.y ? 1 : -1;
   auto const dx = std::abs(static_cast<int>(p1.x) - static_cast<int>(p0.x));
   auto const dy = -std::abs(static_cast<int>(p1.y) - static_cast<int>(p0.y));
   auto err = dx + dy;
@@ -225,22 +222,8 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
-static font::glyph const& find_glyph(glyph_cache& gc, char32_t code_point) {
-  struct font const* const font = gc.get_font();
-  auto pos = font->glyphs.find(static_cast<std::uint32_t>(code_point));
-  if (pos == font->glyphs.end()) {
-    pos = font->glyphs.find(white_square);
-    if (pos == font->glyphs.end()) {
-      // We've got no definition for the requested code point and no definition for U+25A1 (WHITE SQUARE). Last resort
-      // is just the first glyph.
-      pos = font->glyphs.begin();
-    }
-  }
-  return pos->second;
-}
-
 static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::optional<char32_t> prev_code_point) {
-  if (!prev_code_point) {
+  if (!prev_code_point.has_value()) {
     return 0;
   }
   ordinate space = gc.spacing();
@@ -267,10 +250,10 @@ void draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos) {
 template <typename DrawFn>
 static ordinate scan_code_point(ordinate x, glyph_cache& gc, char32_t code_point,
                                 std::optional<char32_t> prev_code_point, DrawFn draw) {
-  font::glyph const& g = find_glyph(gc, code_point);
-  x += glyph_spacing(gc, g, prev_code_point);
-  draw(gc, code_point, x);
-  x += gc.get_font()->width(g);
+  font::glyph const* g = gc.find_glyph(code_point);
+  x += glyph_spacing(gc, *g, prev_code_point);
+  draw(code_point, x);
+  x += gc.get_font()->width(*g);
   return x;
 }
 
@@ -301,14 +284,14 @@ template <typename DrawFn> static ordinate scan_string(glyph_cache& gc, std::u8s
 }
 
 point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos) {
-  ordinate x = scan_string(gc, s, [&dest, &pos](glyph_cache& gc, char32_t code_point, ordinate x) {
+  ordinate const new_x = scan_string(gc, s, [&gc, &dest, &pos](char32_t code_point, ordinate x) {
     draw_char(dest, gc, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
   });
-  return point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y};
+  return point{.x = static_cast<ordinate>(pos.x + new_x), .y = pos.y};
 }
 
 ordinate string_width(glyph_cache& gc, std::u8string_view s) {
-  return scan_string(gc, s, [](glyph_cache& gc, char32_t code_point, ordinate x) {});
+  return scan_string(gc, s, [](char32_t /*code_point*/, ordinate /*x*/) {});
 }
 
 }  // end namespace draw
