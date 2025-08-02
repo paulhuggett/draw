@@ -92,6 +92,7 @@ private:
   std::uint16_t height_ = 0;  ///< Height of the bitmap in pixels
   std::uint16_t stride_ = 0;  ///< Number of bytes per row
 
+  void tranfer(std::byte& dest, std::byte const src_pixel, std::byte const dest_pixel, transfer_mode mode);
   constexpr std::size_t actual_store_size() const { return stride_ * height_; }
   void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte const pattern);
   void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);

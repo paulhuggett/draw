@@ -22,25 +22,43 @@ void bitmap::dump(std::FILE* const stream) const {
   std::println(stream, "{:{}}^", "", width_);
 }
 
+void bitmap::tranfer(std::byte& dest, std::byte const src_pixel, std::byte const dest_pixel, transfer_mode mode) {
+  switch (mode) {
+  case transfer_mode::mode_or:
+    if (src_pixel != std::byte{0}) {
+      dest |= dest_pixel;
+    }
+    break;
+  case transfer_mode::mode_copy:
+    if (src_pixel != std::byte{0}) {
+      dest |= dest_pixel;
+    } else {
+      dest &= ~dest_pixel;
+    }
+    break;
+  default: assert(false && "unknown transfer mode"); break;
+  }
+}
+
 // TODO: this code is functional but should be copying byte-by-byte rather than pixel-by-pixel where possible.
 void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
-  using uordinate = std::make_unsigned_t<ordinate>;
   // An initial gross clipping check.
   if ((dest_pos.x > static_cast<int>(width_)) || (dest_pos.x + static_cast<int>(source.width()) < 0) ||
       (dest_pos.y > static_cast<int>(height_)) || (dest_pos.y + static_cast<int>(source.height()) < 0)) {
     return;
   }
 
-  auto dest_y = std::max(dest_pos.y, ordinate{0});
-  auto const src_y_init = dest_pos.y < 0 ? static_cast<uordinate>(-dest_pos.y) : uordinate{0};
-  auto const src_y_end = std::min(static_cast<int>(source.height_), src_y_init + height_ - dest_y);
+  auto dest_y = static_cast<unsigned>(std::max(dest_pos.y, ordinate{0}));
+  auto const src_y_init = dest_pos.y < 0 ? static_cast<unsigned>(-dest_pos.y) : 0U;
+  auto const src_y_end = std::min(static_cast<unsigned>(source.height_), src_y_init + height_ - dest_y);
 
-  auto const src_x_init = dest_pos.x >= 0 ? 0 : -dest_pos.x;
-  auto const src_x_end =
-      std::min(static_cast<int>(source.width_), src_x_init + width_ - std::max(dest_pos.x, ordinate{0}));
+  auto const src_x_init = dest_pos.x >= 0 ? 0U : static_cast<unsigned>(-dest_pos.x);
+  assert(width_ - std::max(dest_pos.x, ordinate{0}) >= 0);
+  auto const src_x_end = std::min(static_cast<unsigned>(source.width_),
+                                  src_x_init + static_cast<unsigned>(width_ - std::max(dest_pos.x, ordinate{0})));
 
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
-    auto dest_x = std::max(dest_pos.x, ordinate{0});
+    auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, ordinate{0}));
 
     for (auto src_x = src_x_init; src_x < src_x_end; ++src_x, ++dest_x) {
       assert(src_x >= 0);
@@ -52,21 +70,7 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
       assert(dest_index < store_.size());
       auto const dest_pixel = std::byte{0x80} >> (dest_x % 8U);
 
-      switch (mode) {
-      case transfer_mode::mode_or:
-        if (src_pixel != std::byte{0}) {
-          store_[dest_index] |= dest_pixel;
-        }
-        break;
-      case transfer_mode::mode_copy:
-        if (src_pixel != std::byte{0}) {
-          store_[dest_index] |= dest_pixel;
-        } else {
-          store_[dest_index] &= ~dest_pixel;
-        }
-        break;
-      default: assert(false && "unknown transfer mode"); break;
-      }
+      tranfer(store_[dest_index], src_pixel, dest_pixel, mode);
     }
   }
 }
@@ -144,22 +148,29 @@ void bitmap::line(point p0, point p1) {
     std::swap(p0.x, p1.x);
   }
   if (p0.y == p1.y) {
-    this->line_horizontal(p0.x, p1.x, p0.y, std::byte{0xFF});
+    if (p0.y >= 0 && p0.y < height_) {
+      this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, ordinate{0})),
+                            static_cast<std::uint16_t>(std::max(p1.x, ordinate{0})), static_cast<std::uint16_t>(p0.y),
+                            std::byte{0xFF});
+    }
     return;
   }
   if (p0.x == p1.x) {
-    this->line_vertical(p0.x, p0.y, p1.y);
+    if (p0.x >= 0 && p0.x < width_) {
+      this->line_vertical(static_cast<std::uint16_t>(p0.x), static_cast<std::uint16_t>(std::max(p0.y, ordinate{0})),
+                          static_cast<std::uint16_t>(std::max(p1.y, ordinate{0})));
+    }
     return;
   }
 
-  auto const sx = p0.x < p1.x ? 1 : -1;
-  auto const sy = p0.y < p1.y ? 1 : -1;
+  auto const sx = p0.x < p1.x ? ordinate{1} : ordinate{-1};
+  auto const sy = p0.y < p1.y ? ordinate{1} : ordinate{-1};
   auto const dx = std::abs(static_cast<int>(p1.x) - static_cast<int>(p0.x));
   auto const dy = -std::abs(static_cast<int>(p1.y) - static_cast<int>(p0.y));
   auto err = dx + dy;
 
   for (;;) {
-    this->set(point{.x = static_cast<ordinate>(p0.x), .y = static_cast<ordinate>(p0.y)}, true);
+    this->set(point{.x = p0.x, .y = p0.y}, true);
     auto e2 = err * 2;
     if (e2 >= dy) {
       if (p0.x == p1.x) {
@@ -209,16 +220,18 @@ pattern const light_gray{.data = {std::byte{0x88}, std::byte{0x42}, std::byte{0x
                                   std::byte{0x42}, std::byte{0x88}, std::byte{0x42}}};
 
 void bitmap::paint_rect(rect const& r, pattern const& pat) {
-  if (r.bottom < r.top || r.right < r.left || r.top < 0) {
+  if (r.bottom < r.top || r.right < r.left || r.bottom < 0 || r.right < 0) {
     return;
   }
-  if (static_cast<unsigned>(r.top) >= height_) {
+  if (r.top >= 0 && static_cast<unsigned>(r.top) >= height_) {
     return;
   }
-  auto const y0 = static_cast<unsigned>(r.top);
-  auto const y1 = std::min(static_cast<unsigned>(r.bottom), height_ - 1U);
+  auto const x0 = static_cast<std::uint16_t>(std::max(r.left, ordinate{0}));
+  auto const x1 = static_cast<std::uint16_t>(std::max(r.right, ordinate{0}));
+  auto const y0 = static_cast<std::uint16_t>(std::max(r.top, ordinate{0}));
+  auto const y1 = std::min(static_cast<std::uint16_t>(r.bottom), static_cast<std::uint16_t>(height_ - 1U));
   for (auto y = y0; y <= y1; ++y) {
-    this->line_horizontal(r.left, r.right, y, pat.data[y % 8]);
+    this->line_horizontal(x0, x1, y, pat.data[y % 8]);
   }
 }
 

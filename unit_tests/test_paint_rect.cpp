@@ -100,4 +100,43 @@ TEST(Frame, Empty) {
                                        ));
 }
 
+TEST(Frame, NegativeLeft) {
+  auto [store, bmp] = draw::create_bitmap_and_store(8, 4);
+  bmp.paint_rect(draw::rect{.top = 0, .left = -10, .bottom = 4, .right = 2}, draw::black);
+  EXPECT_THAT(bmp.store(), ElementsAre(0b11100000_b,  // [0]
+                                       0b11100000_b,  // [1]
+                                       0b11100000_b,  // [2]
+                                       0b11100000_b   // [3]
+                                       ));
+}
+TEST(Frame, NegativeLeftAndRight) {
+  auto [store, bmp] = draw::create_bitmap_and_store(8, 4);
+  bmp.paint_rect(draw::rect{.top = 0, .left = -10, .bottom = 4, .right = -5}, draw::black);
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b,  // [0]
+                                       0b00000000_b,  // [1]
+                                       0b00000000_b,  // [2]
+                                       0b00000000_b   // [3]
+                                       ));
+}
+
+TEST(Frame, NegativeTop) {
+  auto [store, bmp] = draw::create_bitmap_and_store(8, 4);
+  bmp.paint_rect(draw::rect{.top = -10, .left = 0, .bottom = 2, .right = 2}, draw::black);
+  EXPECT_THAT(bmp.store(), ElementsAre(0b11100000_b,  // [0]
+                                       0b11100000_b,  // [1]
+                                       0b11100000_b,  // [2]
+                                       0b00000000_b   // [3]
+                                       ));
+}
+
+TEST(Frame, NegativeTopAndBottom) {
+  auto [store, bmp] = draw::create_bitmap_and_store(8, 4);
+  bmp.paint_rect(draw::rect{.top = -10, .left = 0, .bottom = -5, .right = 2}, draw::black);
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b,  // [0]
+                                       0b00000000_b,  // [1]
+                                       0b00000000_b,  // [2]
+                                       0b00000000_b   // [3]
+                                       ));
+}
+
 }  // end anonymous namespace
