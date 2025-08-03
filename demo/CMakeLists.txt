@@ -7,10 +7,11 @@ if(Curses_FOUND AND NOT TARGET Curses::Curses)
       INTERFACE_LINK_LIBRARIES "${CURSES_LIBRARIES}"
       INTERFACE_INCLUDE_DIRECTORIES "${CURSES_INCLUDE_DIRS}"
   )
+
+  add_executable(draw-demo)
+  target_sources(draw-demo PRIVATE main.cpp)
+  target_link_libraries(draw-demo PRIVATE draw draw-font)
+  target_link_libraries(draw-demo PRIVATE Curses::Curses)
+  setup_target(draw-demo)
 endif()
 
-add_executable(draw-demo)
-target_sources(draw-demo PRIVATE main.cpp)
-target_link_libraries(draw-demo PRIVATE draw draw-font)
-target_link_libraries(draw-demo PRIVATE Curses::Curses)
-setup_target(draw-demo)
