@@ -235,6 +235,13 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
+void bitmap::draw_char(glyph_cache& gc, char32_t code_point, point pos) {
+  if (pos.x > this->width() || pos.y > this->height()) {
+    return;
+  }
+  this->copy(gc.get(code_point), pos, transfer_mode::mode_or);
+}
+
 static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::optional<char32_t> prev_code_point) {
   if (!prev_code_point.has_value()) {
     return 0;
@@ -250,14 +257,6 @@ static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::option
     space -= kern_pos->distance;
   }
   return space;
-}
-
-void draw_char(bitmap& dest, glyph_cache& gc, char32_t code_point, point pos) {
-  if (pos.x > dest.width() || pos.y > dest.height()) {
-    return;
-  }
-  bitmap const& bm = gc.get(code_point);
-  dest.copy(bm, pos, bitmap::transfer_mode::mode_or);
 }
 
 template <typename DrawFn>
@@ -296,9 +295,9 @@ template <typename DrawFn> static ordinate scan_string(glyph_cache& gc, std::u8s
   return x;
 }
 
-point draw_string(bitmap& dest, glyph_cache& gc, std::u8string_view s, point pos) {
-  ordinate const new_x = scan_string(gc, s, [&gc, &dest, &pos](char32_t code_point, ordinate x) {
-    draw_char(dest, gc, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
+point bitmap::draw_string(glyph_cache& gc, std::u8string_view s, point pos) {
+  ordinate const new_x = scan_string(gc, s, [this, &gc, &pos](char32_t code_point, ordinate x) {
+    this->draw_char(gc, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
   });
   return point{.x = static_cast<ordinate>(pos.x + new_x), .y = pos.y};
 }

@@ -35,6 +35,10 @@ void themometer(bitmap& bmp, rect const& r, float pcnt) {
   bmp.frame_rect(r);
   bmp.paint_rect(fill, draw::gray);
   bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
+
+  fill.left = fill.right + 1;
+  fill.right = r.right - 1;
+  bmp.paint_rect(fill, draw::white);
 }
 
 void show(bitmap const& bmp) {
@@ -60,28 +64,32 @@ int main() {
 
   initscr();  // Refreshes stdscr
   cbreak();
+  noecho();
+  halfdelay(5);
+
   std::array<std::byte, 128 / 8 * 32> frame_store{};
   bitmap frame_buffer{frame_store, 128U, 32U};
   draw::glyph_cache gc16{sans16};
   draw::glyph_cache gc32{sans32};
 
   auto count = 0;
-  for (;;) {
-    frame_buffer.clear();
+  auto swidth = 0;
+  do {
+    frame_buffer.paint_rect(rect{.top = 0, .left = static_cast<ordinate>(128 - swidth), .right = 127, .bottom = 31},
+                            draw::white);
 
     themometer(frame_buffer, rect{.top = 26, .left = 0, .bottom = 31, .right = 127}, (count % 100) / 100.0F);
     std::array<char8_t, 32> str_buffer;
     auto const first = std::begin(str_buffer);
     auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
     std::u8string_view const str_view{first, last};
-    auto const swidth = std::min(draw::string_width(gc32, str_view), ordinate{128});
-    draw_string(frame_buffer, gc32, str_view, point{static_cast<ordinate>(128 - swidth), -1});
+    swidth = std::min(draw::string_width(gc32, str_view), ordinate{128});
+    frame_buffer.draw_string(gc32, str_view, point{static_cast<ordinate>(128 - swidth), -1});
+
+    ++count;
 
     show(frame_buffer);
     refresh();
-    std::this_thread::sleep_for(500ms);
-
-    ++count;
-  }
+  } while (getch() != 'q');
   endwin();
 }
