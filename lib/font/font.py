@@ -29,16 +29,16 @@ def is_splitable(no_split:SplitList, x:int) -> tuple[SplitList, bool]:
     return (no_split, splitable)
 
 def read_png(file:pathlib.Path):
-  reader = png.Reader(filename=file)
-  width, height, pixels, metadata = reader.asRGBA8()
-  pixels = list(pixels)
-  if metadata['bitdepth'] != 8:
-      raise RuntimeError("File {file} does not have a bitdepth of 8")
-  if metadata['planes'] != 4:
-      raise RuntimeError("File {file} does not have 4 planes: expected RGBA format")
-  if height % 8 != 0:
-      raise RuntimeError('Height must be a multiple of 8!')
-  return width, height, pixels
+    reader = png.Reader(filename=file)
+    width, height, pixels, metadata = reader.asRGBA8()
+    pixels = list(pixels)
+    if metadata['bitdepth'] != 8:
+        raise RuntimeError("File {file} does not have a bitdepth of 8")
+    if metadata['planes'] != 4:
+        raise RuntimeError("File {file} does not have 4 planes: expected RGBA format")
+    if height % 8 != 0:
+        raise RuntimeError('Height must be a multiple of 8!')
+    return width, height, pixels
 
 type InputList = list[dict[str, Any]]
 
@@ -135,11 +135,15 @@ extern draw::font const {name};
 #endif // {guard}
 ''')
 
-type JsonKernList = dict[str, tuple[str, int]]
+
 type KernDict = dict[int, list[tuple[int, int]]]
 
-
-def write_source_file(font:FontDict, kd:KernDict, height:int, output_dir:pathlib.Path, name:str, spacing:int) -> None:
+def write_source_file(font:FontDict,
+                      kd:KernDict,
+                      height:int,
+                      output_dir:pathlib.Path,
+                      name:str,
+                      spacing:int) -> None:
     with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
@@ -185,7 +189,7 @@ draw::font const {name} {{
         for k, v in font.items():
             name = unicodedata.name(chr(k), '')
             if len(name) > 0:
-              name = "// " + name;
+                name = "// " + name
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
@@ -194,11 +198,11 @@ draw::font const {name} {{
         source.write('  }\n};\n')
 
 def str_to_cp(s) -> int:
-  if not isinstance(s, str):
-    return s
-  if len(s) != 1:
-    raise RuntimeError("string must be one character")
-  return ord(s[0])
+    if not isinstance(s, str):
+        return s
+    if len(s) != 1:
+        raise RuntimeError("string must be one character")
+    return ord(s[0])
 
 def uniqued(iterable, key=None):
     if key is None:
@@ -210,25 +214,27 @@ def uniqued(iterable, key=None):
             seen.add(k)
             yield v
 
+type JsonKernList = dict[str, list[tuple[str, int]]]
+
 def kern_pairs(kl:JsonKernList) -> KernDict:
-  '''The kern list is a series of tuples which represent the previous code point, the current code point, 
-  and the distance by which the spacing between the glyphs should be reduced. The two code points
-  can be specified as either integers or strings of length 1.
+    '''The kern list is a series of tuples which represent the previous code point, the current code
+    point, and the distance by which the spacing between the glyphs should be reduced. The two code
+    points can be specified as either integers or strings of length 1.
 
-  Returns a dictionary whose keys are the current code points and whose values are a list of tuples for the 
-  previous code point and distance.
-  '''
+    Returns a dictionary whose keys are the current code points and whose values are a list of
+    tuples for the previous code point and distance.'''
 
-  kernd:KernDict = {}
-  for k,v in kl.items():
-    for k2, dist in v:
-      prev_cp = k
-      curr_cp = k2
-      distance = dist
-      d = kernd.setdefault(str_to_cp(curr_cp), [])
-      d += [(str_to_cp(prev_cp), distance)]
-  key = lambda x:x[0]
-  return { k: sorted(uniqued(v, key=key), key=key) for k,v in kernd.items() }
+    kernd:KernDict = {}
+    for k,v in kl.items():
+        print(k,v)
+        for k2, dist in v:
+            prev_cp = k
+            curr_cp = k2
+            distance = dist
+            d = kernd.setdefault(str_to_cp(curr_cp), [])
+            d += [(str_to_cp(prev_cp), distance)]
+    key = lambda x:x[0]
+    return { k: sorted(uniqued(v, key=key), key=key) for k,v in kernd.items() }
 
 
 def main():
@@ -239,7 +245,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.file, 'r', encoding='utf-8') as fp:
-      definition = json.load(fp)
+        definition = json.load(fp)
     kp = kern_pairs(definition.get('kern', {}))
     bfr = build_font(definition['glyphs'], args.file.parent)
     if bfr is None:
@@ -254,7 +260,12 @@ def main():
             print()
 
     write_header_file(args.output_dir, definition['name'])
-    write_source_file(font, kp, height, args.output_dir, definition['name'], definition.get('spacing', 0))
+    write_source_file(font,
+                      kp,
+                      height,
+                      args.output_dir,
+                      definition['name'],
+                      definition.get('spacing', 0))
     sys.exit(0)
 
 if __name__ == '__main__':
