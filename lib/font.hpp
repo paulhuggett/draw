@@ -31,6 +31,9 @@ struct font {
     return static_cast<std::uint16_t>(bitmap.size() / this->height);
   }
 
+  // TODO: replace this with iumap<>
+  // [https://github.com/paulhuggett/AM_MIDI2.0Lib/blob/main/include/midi2/adt/iumap.hpp]
+  // (or something like it).
   std::unordered_map<std::uint32_t, glyph> glyphs;
 };
 
