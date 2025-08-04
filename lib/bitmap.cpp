@@ -1,6 +1,7 @@
 #include "bitmap.hpp"
 
 #include <cassert>
+#include <print>
 #include <utility>
 
 #include "glyph_cache.hpp"

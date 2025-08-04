@@ -1,5 +1,7 @@
 #include "glyph_cache.hpp"
 
+#include <print>
+
 namespace draw {
 
 font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {

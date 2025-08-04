@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <optional>
-#include <print>
 #include <vector>
 
 #include "bitmap.hpp"
