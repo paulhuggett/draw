@@ -37,7 +37,7 @@ def read_png(file:pathlib.Path):
   if metadata['planes'] != 4:
       raise RuntimeError("File {file} does not have 4 planes: expected RGBA format")
   if height % 8 != 0:
-      raise 'Height must be a multiple of 8!'
+      raise RuntimeError('Height must be a multiple of 8!')
   return width, height, pixels
 
 type InputList = list[dict[str, Any]]
@@ -155,6 +155,7 @@ namespace {
 ''')
         widest = 0
         baseline = 32 - 8
+        source.write('std::array<kerning_pair, 0> const empty_kern;\n')
         for k, v in font.items():
             if k in kd:
                 source.write(f'std::array const kern_{k:04x} = {{')
@@ -188,7 +189,7 @@ draw::font const {name} {{
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
-            kp_name = f'kern_{k:04x}' if k in kd else '{}'
+            kp_name = f'kern_{k:04x}' if k in kd else 'empty_kern'
             source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {name}\n')
         source.write('  }\n};\n')
 
