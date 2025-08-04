@@ -226,7 +226,6 @@ def kern_pairs(kl:JsonKernList) -> KernDict:
 
     kernd:KernDict = {}
     for k,v in kl.items():
-        print(k,v)
         for k2, dist in v:
             prev_cp = k
             curr_cp = k2
