@@ -38,6 +38,16 @@ TEST(Line, VeryShortHorizontal) {
                                        ));
 }
 
+TEST(Line, VeryShortHorizontalInTheFinalByte) {
+  auto [store, bmp] = draw::create_bitmap_and_store(16, 4);
+  bmp.line(draw::point{10, 3}, draw::point{14, 3});
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
+                                       0b00000000_b, 0b00000000_b,  // [1]
+                                       0b00000000_b, 0b00000000_b,  // [2]
+                                       0b00000000_b, 0b00111110_b   // [3]
+                                       ));
+}
+
 TEST(Line, LongHorizontal) {
   auto [store, bmp] = draw::create_bitmap_and_store(24, 4);
   bmp.line(draw::point{2, 1}, draw::point{21, 1});
