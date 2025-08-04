@@ -37,7 +37,7 @@ def read_png(file:pathlib.Path):
   if metadata['planes'] != 4:
       raise RuntimeError("File {file} does not have 4 planes: expected RGBA format")
   if height % 8 != 0:
-      raise RuntimeError('Height must be a multiple of 8!')
+      raise RuntimeError('Height must be a multiple of 8!')
   return width, height, pixels
 
 type InputList = list[dict[str, Any]]
