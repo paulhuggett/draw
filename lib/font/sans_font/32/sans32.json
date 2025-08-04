@@ -1,6 +1,7 @@
 {
   "name": "sans32",
   "spacing": 2,
+  "glyphs-comment": "The glyphs array defines the bitmaps for each of the glyphs. Each entry is an object with the following properties: 'file' is the name of a PNG image file. This should be an RGBA image. All of the images referenced from the glyphs array must have the same height. A new code point starts when there is an empty column of pixels. 'start' is an array of two tuples: the first element of each defines the x position (in pixels) of a glyph; the second defines its code-point number. Multiple entries in this array enable the image to carry discontinguous code points. 'no-split' is an array of two-tuples which define the start and end (in pixels) of columns which should not cause a new code point to be started, whether or not they are empty.",
   "glyphs": [
     { "file": "basic_latin-0020-002F.png", "starts": [ [0, 32] ], "no-split": [
         [0, 4],
