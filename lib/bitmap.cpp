@@ -22,18 +22,18 @@ void bitmap::dump(std::FILE* const stream) const {
   std::println(stream, "{:{}}^", "", width_);
 }
 
-void bitmap::tranfer(std::byte& dest, std::byte const src_pixel, std::byte const dest_pixel, transfer_mode mode) {
+void bitmap::tranfer(std::byte& dest, std::byte const src_bit, std::byte const dest_bit, transfer_mode mode) {
   switch (mode) {
   case transfer_mode::mode_or:
-    if (src_pixel != std::byte{0}) {
-      dest |= dest_pixel;
+    if (src_bit != std::byte{0}) {
+      dest |= dest_bit;
     }
     break;
   case transfer_mode::mode_copy:
-    if (src_pixel != std::byte{0}) {
-      dest |= dest_pixel;
+    if (src_bit != std::byte{0}) {
+      dest |= dest_bit;
     } else {
-      dest &= ~dest_pixel;
+      dest &= ~dest_bit;
     }
     break;
   default: assert(false && "unknown transfer mode"); break;
@@ -64,55 +64,53 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
       assert(src_x >= 0);
       auto const src_index = (src_y * source.stride_) + (src_x / 8U);
       assert(src_index < source.store_.size());
-      auto const src_pixel = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
+      auto const src_bit = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
 
       auto const dest_index = (dest_y * stride_) + (dest_x / 8U);
       assert(dest_index < store_.size());
-      auto const dest_pixel = std::byte{0x80} >> (dest_x % 8U);
+      auto const dest_bit = std::byte{0x80} >> (dest_x % 8U);
 
-      tranfer(store_[dest_index], src_pixel, dest_pixel, mode);
+      tranfer(store_[dest_index], src_bit, dest_bit, mode);
     }
   }
 }
 
-void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte const pattern) {
+void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t const y, std::byte const pattern) {
   if (x0 > x1) {
-    std::swap(x0, x1);
+    std::swap(x0, x1);  // Ensure that we always go from lower to height addresses.
   }
   if (x0 >= width_ || y >= height_) {
     return;
   }
   x1 = std::min(static_cast<std::uint16_t>(x1 + 1U), width_);
-  auto byte_index = y * stride_ + x0 / 8U;
-  assert(byte_index < store_.size() && "index is not within the bitmap");
+  auto it = store_.begin() + y * stride_ + x0 / 8U;
+  assert(it < store_.end() && "iterator is not within the bitmap");
+
+  // mask_left is used for setting the last bits of a byte for the left-most pixels
+  auto const mask_left = std::byte{0xFF} >> (x0 % 8U);
+  // mask_right is used for setting the first bits of a byte for the right-most pixels
+  auto const mask_right = std::byte{0xFF} << (8U - (x1 % 8U));
+
   if (x0 / 8U == x1 / 8U) {
-    auto mask0 = static_cast<std::byte>((1U << (8 - (x0 % 8))) - 1U);
-    mask0 &= ~static_cast<std::byte>((1U << (8 - (x1 % 8))) - 1U);
-    auto& b = store_[byte_index];
-    b = (b & ~mask0) | (mask0 & pattern);
+    // The line lies entirely within a single byte.
+    auto const mask = mask_left & mask_right;
+    *it = (*it & ~mask) | (mask & pattern);
     return;
   }
 
-  {
-    auto const mask0 = static_cast<std::byte>((1U << (8 - (x0 % 8))) - 1U);
-    auto& b = store_[byte_index];
-    b = (b & ~mask0) | (mask0 & pattern);
+  // First part of the line up until a byte boundary.
+  *it = (*it & ~mask_left) | (mask_left & pattern);
+  ++it;
+  // Set whole bytes (8 pixels at a time) going from left to right.
+  for (auto bytes = (x1 / 8U) - (x0 / 8U) - 1U; bytes > 0; --bytes) {
+    assert(it < store_.end() && "iterator is not within the bitmap");
+    *it = pattern;
+    ++it;
   }
-
-  auto xbyte = (x0 / 8U) + 1U;
-  auto last_xbyte = x1 / 8U;
-  ++byte_index;
-  for (; xbyte < last_xbyte; ++xbyte) {
-    assert(byte_index < store_.size() && "index is not within the bitmap");
-    store_[byte_index] = pattern;
-    ++byte_index;
-  }
-
-  if (auto const num_bits = x1 % 8U; num_bits > 0U) {
-    assert(byte_index < store_.size() && "index is not within the bitmap");
-    auto const mask1 = static_cast<std::byte>((1U << num_bits) - 1U) << (8 - num_bits);
-    auto& b = store_[byte_index];
-    b = (b & ~mask1) | (mask1 & pattern);
+  // The final part of the line. Check that we don't write beyond the end of the buffer.
+  if (mask_right != std::byte{0}) {
+    assert(it < store_.end() && "iterator is not within the bitmap");
+    *it = (*it & ~mask_right) | (mask_right & pattern);
   }
 }
 
@@ -139,14 +137,6 @@ void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) 
 }
 
 void bitmap::line(point p0, point p1) {
-  /* Save half the line-drawing cases by swapping p0.y with p1.y
-   and X0 with p1.x if p0.y is greater than p1.y. As a result, DeltaY
-   is always > 0, and only the octant 0-3 cases need to be
-   handled. */
-  if (p0.y > p1.y) {
-    std::swap(p0.y, p1.y);
-    std::swap(p0.x, p1.x);
-  }
   if (p0.y == p1.y) {
     if (p0.y >= 0 && p0.y < height_) {
       this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, ordinate{0})),

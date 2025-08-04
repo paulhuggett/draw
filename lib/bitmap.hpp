@@ -95,6 +95,7 @@ inline bool bitmap::set(point const p, bool const new_state) {
   assert(index < this->actual_store_size());
   auto& b = store_[index];
   auto const bit = std::byte{0x80} >> (x % 8U);
+  // TODO: Checkout <https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching>
   if (new_state) {
     b |= bit;
   } else {
