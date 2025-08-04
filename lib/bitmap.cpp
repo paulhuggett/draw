@@ -61,7 +61,6 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
     auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, ordinate{0}));
 
     for (auto src_x = src_x_init; src_x < src_x_end; ++src_x, ++dest_x) {
-      assert(src_x >= 0);
       auto const src_index = (src_y * source.stride_) + (src_x / 8U);
       assert(src_index < source.store_.size());
       auto const src_bit = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
