@@ -15,10 +15,10 @@ public:
   using key_type = Key;
   using mapped_type = T;
 
-  template <typename MissFn, typename EvictFn>
-    requires(std::is_invocable_r_v<T, MissFn> && std::is_invocable_v<EvictFn, T &>)
-  mapped_type &access(Key const &key, MissFn miss, EvictFn evict) {
-    return sets_[key & (NumSets - 1U)].access(key >> index_bits_, miss, evict);
+  template <typename MissFn>
+    requires(std::is_invocable_r_v<T, MissFn>)
+  mapped_type &access(Key const &key, MissFn miss) {
+    return sets_[key & (NumSets - 1U)].access(key >> index_bits_, miss);
   }
 
 private:
@@ -58,31 +58,38 @@ private:
 
   class cache_set {
   public:
-    template <typename MissFn, typename EvictFn> mapped_type &access(std::size_t tag, MissFn miss, EvictFn evict) {
+    template <typename MissFn> mapped_type &access(std::size_t tag, MissFn miss) {
       // Linear search.
       auto const new_value = tvs{.valid = true, .tag = tag};
       for (auto ctr = std::size_t{0}; ctr < NumWays; ++ctr) {
         if (tag_and_valid_[ctr] == new_value) {
           plru_.access(ctr);
-          return ways_[ctr];
+          return ways_[ctr].value();
         }
       }
 
       std::size_t const victim = plru_.get_victim();
       if (tag_and_valid_[victim].valid) {
-        // If this slot is occupied, call the evict function on it.
-        evict(std::ref(ways_[victim]));
+        // If this slot is occupied, evict its contents
+        ways_[victim].value().~mapped_type();
       }
 
       // The key was not found: call miss() to populate it.
-      ways_[victim] = miss();
+      ways_[victim].value() = miss();
       tag_and_valid_[victim] = new_value;
       plru_.access(victim);
-      return ways_[victim];
+      return ways_[victim].value();
     }
 
   private:
-    std::array<T, NumWays> ways_{};
+    struct aligned_storage {
+      [[nodiscard]] constexpr mapped_type &value() noexcept { return *std::bit_cast<mapped_type *>(&v[0]); }
+      [[nodiscard]] constexpr mapped_type const &value() const noexcept {
+        return *std::bit_cast<mapped_type const *>(&v[0]);
+      }
+      alignas(mapped_type) std::byte v[sizeof(mapped_type)];
+    };
+    std::array<aligned_storage, NumWays> ways_;
 
     struct tvs {
       friend constexpr bool operator==(tvs const &, tvs const &) noexcept = default;

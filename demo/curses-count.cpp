@@ -81,7 +81,6 @@ int main() {
   constexpr auto frame_height = ordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  draw::glyph_cache gc16{sans16};
   draw::glyph_cache gc32{sans32};
 
   auto count = 0;
