@@ -230,8 +230,7 @@ def kern_pairs(kl:JsonKernList) -> KernDict:
             prev_cp = k
             curr_cp = k2
             distance = dist
-            d = kernd.setdefault(str_to_cp(curr_cp), [])
-            d += [(str_to_cp(prev_cp), distance)]
+            kernd.setdefault(str_to_cp(curr_cp), []).append((str_to_cp(prev_cp), distance))
     key = lambda x:x[0]
     return { k: sorted(uniqued(v, key=key), key=key) for k,v in kernd.items() }
 
