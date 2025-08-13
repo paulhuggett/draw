@@ -1,5 +1,5 @@
-#ifndef FONT_HPP
-#define FONT_HPP
+#ifndef DRAW_FONT_HPP
+#define DRAW_FONT_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +18,12 @@ struct kerning_pair {
   std::uint32_t distance : 8 = 0;
 };
 
+// The glyphs in a font are always a multiple of 8 pixels tall as given by the font's 'height'
+// member. The glyph data consists of an array of bytes which are grouped according to the font height: a
+// height of 2 implies groups of 2 bytes each representing 8 pixels; a height of 4 indicates
+// groups of 4 bytes give a total of 32 pixels per group. Each group of bytes represents a single
+// column of pixels in the font. The least significant bit in each byte holds the pixel value for
+// the smallest y position.
 struct font {
   std::uint8_t baseline;
   std::uint8_t widest;
@@ -39,4 +45,4 @@ struct font {
 
 }  // end namespace draw
 
-#endif  // FONT_HPP
+#endif  // DRAW_FONT_HPP

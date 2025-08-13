@@ -1,5 +1,6 @@
 #include "glyph_cache.hpp"
 
+#include <cassert>
 #include <print>
 
 namespace draw {
@@ -17,6 +18,7 @@ font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
   }
   return &pos->second;
 }
+
 bitmap glyph_cache::render(std::vector<std::byte>* const bitmap_store, char32_t code_point) {
   auto height = static_cast<std::uint16_t>(font_->height * 8);
 

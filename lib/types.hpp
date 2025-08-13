@@ -1,5 +1,5 @@
-#ifndef TYPES_HPP
-#define TYPES_HPP
+#ifndef DRAW_TYPES_HPP
+#define DRAW_TYPES_HPP
 
 #include <array>
 #include <cassert>
@@ -67,4 +67,4 @@ struct pattern {
 
 }  // end namespace draw
 
-#endif  // TYPES_HPP
+#endif  // DRAW_TYPES_HPP

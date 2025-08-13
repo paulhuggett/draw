@@ -1,12 +1,12 @@
-#ifndef GLYPH_CACHE_HPP
-#define GLYPH_CACHE_HPP
+#ifndef DRAW_GLYPH_CACHE_HPP
+#define DRAW_GLYPH_CACHE_HPP
 
-#include <cassert>
-#include <optional>
+#include <cstddef>
 #include <vector>
 
 #include "bitmap.hpp"
 #include "font.hpp"
+#include "plru_cache.hpp"
 
 namespace draw {
 
@@ -15,16 +15,22 @@ class glyph_cache {
   static constexpr bool trace_unpack = false;
 
 public:
-  explicit constexpr glyph_cache(font const& f)
-      : font_{&f}, bitmap_store_{std::size_t{this->stride(f) * this->pixel_height(f)}} {}
+  explicit constexpr glyph_cache(font const& f) noexcept : font_{&f} {}
 
   [[nodiscard]] bitmap const& get(char32_t code_point) {
-    if (code_point == code_point_) {
-      return cache_bm_;
-    }
-    cache_bm_ = this->render(&bitmap_store_, code_point);
-    code_point_ = code_point;
-    return cache_bm_;
+    return cache_
+        .access(
+            static_cast<std::uint32_t>(code_point),
+            [this, &code_point]() {
+              entry result;
+              result.store.resize(std::size_t{this->stride(*font_) * this->pixel_height(*font_)});
+              result.bm = this->render(&result.store, code_point);
+              return result;
+            },
+            [](entry&) {
+              // The supplied cache entry is being evicted. There's nothing special to do.
+            })
+        .bm;
   }
 
   [[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
@@ -33,20 +39,20 @@ public:
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  bitmap render(std::vector<std::byte>* const bitmap_store, char32_t code_point);
+  [[nodiscard]] bitmap render(std::vector<std::byte>* const bitmap_store, char32_t code_point);
 
   [[nodiscard]] static constexpr unsigned stride(font const& f) { return (f.widest + 7U) / 8U; }
   [[nodiscard]] static constexpr unsigned pixel_height(font const& f) { return f.height * 8U; }
 
   font const* font_;
-  // just one entry ATM.
-
-  std::optional<std::uint32_t> code_point_;
-  std::vector<std::byte> bitmap_store_;
-  /// A bitmap that is large enough to contain the largest glyph in the font.
-  bitmap cache_bm_;
+  struct entry {
+    /// A bitmap that is large enough to contain the largest glyph in the font.
+    std::vector<std::byte> store;
+    bitmap bm;
+  };
+  plru_cache<std::uint32_t, entry, 8, 4> cache_;
 };
 
 } // end namespace draw
 
-#endif  // GLYPH_CACHE_HPP
+#endif  // DRAW_GLYPH_CACHE_HPP

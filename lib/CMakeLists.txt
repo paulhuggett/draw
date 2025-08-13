@@ -5,6 +5,7 @@ target_sources(draw PRIVATE
   font.hpp
   bitmap.cpp bitmap.hpp
   glyph_cache.cpp glyph_cache.hpp
+  plru_cache.hpp
   icubaby.hpp
   types.hpp
 )

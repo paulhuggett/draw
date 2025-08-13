@@ -7,6 +7,164 @@
 #include "glyph_cache.hpp"
 #include "icubaby.hpp"
 
+using namespace draw::literals;
+using draw::bitmap;
+
+namespace {
+
+void transfer(std::byte* const dest, std::byte const src_bit, std::byte const dest_bit, bitmap::transfer_mode mode) {
+  auto out = (static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit);
+  switch (mode) {
+  case bitmap::transfer_mode::mode_or: *dest |= out; break;
+  case bitmap::transfer_mode::mode_copy: *dest = (*dest & ~dest_bit) | out; break;
+  default: assert(false && "unknown transfer mode"); break;
+  }
+}
+
+void memor(std::byte* dest, std::byte const* src, std::size_t len) {
+  for (; len > 0; --len) {
+    *(dest++) |= *(src++);
+  }
+}
+
+void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
+                      std::byte* const dest_row, bitmap::transfer_mode mode) {
+  using enum bitmap::transfer_mode;
+  assert(src_x % 8U == dest_x % 8U);
+
+  auto const* src = src_row + (src_x / 8U);
+  auto* dest = dest_row + (dest_x / 8U);
+  auto const len = (src_x_end / 8U) - (src_x / 8U);
+  switch (mode) {
+  case mode_copy: std::memcpy(dest, src, len); break;
+  case mode_or: memor(dest, src, len); break;
+  default: assert(false && "unknown transfer mode"); break;
+  }
+  dest += len;
+  src += len;
+  src_x += len * 8U;
+  dest_x += len * 8U;
+  assert(src_x + 8U > src_x_end && "There should be less than a whole byte left to copy");
+  if (src_x < src_x_end) {
+    auto const mask = 0xFF_b << (8U - (src_x_end % 8U));
+    switch (mode) {
+    case mode_or: *dest |= *src & mask; break;
+    case mode_copy: *dest = (*src & mask) | (*dest & ~mask); break;
+    default: assert(false && "unknown transfer mode"); break;
+    }
+  }
+  return;
+}
+
+void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
+                         std::byte* const dest_row, bitmap::transfer_mode mode) {
+  using enum bitmap::transfer_mode;
+  assert(src_x % 8U != dest_x % 8U);
+
+  auto const* src = src_row + (src_x / 8U);
+  auto* dest = dest_row + (dest_x / 8U);
+
+  if (src_x + 8 > src_x_end) {
+    // There's less than a byte to copy.
+    // TODO: don't do this one pixel at a time.
+    for (; src_x < src_x_end; ++src_x, ++dest_x) {
+      auto const src_bit = *src & (0x80_b >> (src_x % 8U));
+      auto const dest_bit = 0x80_b >> (dest_x % 8U);
+      transfer(dest_row + (dest_x / 8U), src_bit, dest_bit, mode);
+    }
+    return;
+  }
+
+  constexpr bool trace = false;
+  if constexpr (trace) {
+    for (auto x = src_x; x < src_x_end; ++x) {
+      if (x % 8 == 0) {
+        std::print("'");
+      }
+      std::print("{:c}", (src_row[x / 8] & (0x80_b >> (x % 8))) != std::byte{0} ? '1' : '0');
+    }
+    std::print("    ");
+  }
+
+  auto const m = dest_x % 8U;
+  auto const mask_high = 0xFF_b << m;
+  auto const mask_low = 0xFF_b >> m;
+
+  if (src_x + 8U <= src_x_end) {
+    // The initial partial byte.
+    switch (mode) {
+    case mode_or: *dest |= (*src & mask_high) >> m; break;
+    case mode_copy: *dest = (*dest & ~mask_low) | ((*src & mask_high) >> m); break;
+    default: assert(false && "unknown transfer mode"); break;
+    }
+
+    if constexpr (trace) {
+      std::print("{:08b}'", std::to_underlying(*dest));
+    }
+
+    ++dest;
+    src_x += 8U - m;
+    dest_x += 8U - m;
+
+    // Copying a byte at a time.
+    while (src_x + 8U <= src_x_end) {
+      auto const v = ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m);
+      switch (mode) {
+      case mode_or: *dest |= v; break;
+      case mode_copy: *dest = v; break;
+      default: assert(false && "unknown transfer mode"); break;
+      }
+
+      if constexpr (trace) {
+        std::print("{:08b}'", std::to_underlying(*dest));
+      }
+
+      ++dest;
+      ++src;
+      src_x += 8U;
+      dest_x += 8U;
+    }
+  }
+  // The final partial byte. We have fewer than eight bits of the source remaining.
+  assert(src_x <= src_x_end);
+  if (auto const remaining = src_x_end - src_x; remaining > 0) {
+    assert(remaining <= 8);
+
+    auto v = 0_b;
+    if (remaining > m) {
+      // The remaining bits span more than a single byte.
+      v = (*src & ~mask_high) << (8U - m);
+      auto const mask = ~(0xFF_b >> (remaining - m));
+      v |= ((*(src + 1) & mask) >> m);
+    } else {
+      v = *src << (src_x % 8U);
+      v &= 0xFF_b << (8U - remaining);
+    }
+
+    switch (mode) {
+    case mode_or: *dest |= v; break;
+    case mode_copy: *dest = v | (*dest & mask_low); break;
+    default: assert(false && "unknown transfer mode"); break;
+    }
+  }
+
+  if constexpr (trace) {
+    std::println("{:08b}", std::to_underlying(*dest));
+  }
+}
+
+void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
+              std::byte* const dest_row, bitmap::transfer_mode mode) {
+  assert(src_x_init <= src_x_end);
+  if (src_x_init % 8U == dest_x % 8U) {
+    copy_row_aligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+  } else {
+    copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+  }
+}
+
+}  // namespace
+
 namespace draw {
 
 void bitmap::dump(std::FILE* const stream) const {
@@ -23,29 +181,10 @@ void bitmap::dump(std::FILE* const stream) const {
   std::println(stream, "{:{}}^", "", width_);
 }
 
-void bitmap::tranfer(std::byte& dest, std::byte const src_bit, std::byte const dest_bit, transfer_mode mode) {
-  switch (mode) {
-  case transfer_mode::mode_or:
-    if (src_bit != std::byte{0}) {
-      dest |= dest_bit;
-    }
-    break;
-  case transfer_mode::mode_copy:
-    if (src_bit != std::byte{0}) {
-      dest |= dest_bit;
-    } else {
-      dest &= ~dest_bit;
-    }
-    break;
-  default: assert(false && "unknown transfer mode"); break;
-  }
-}
-
-// TODO: this code is functional but should be copying byte-by-byte rather than pixel-by-pixel where possible.
 void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
   // An initial gross clipping check.
-  if ((dest_pos.x > static_cast<int>(width_)) || (dest_pos.x + static_cast<int>(source.width()) < 0) ||
-      (dest_pos.y > static_cast<int>(height_)) || (dest_pos.y + static_cast<int>(source.height()) < 0)) {
+  if ((dest_pos.x >= static_cast<int>(width_)) || (dest_pos.x + static_cast<int>(source.width()) < 0) ||
+      (dest_pos.y >= static_cast<int>(height_)) || (dest_pos.y + static_cast<int>(source.height()) < 0)) {
     return;
   }
 
@@ -58,60 +197,52 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
   auto const src_x_end = std::min(static_cast<unsigned>(source.width_),
                                   src_x_init + static_cast<unsigned>(width_ - std::max(dest_pos.x, ordinate{0})));
 
+  auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, ordinate{0}));
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
-    auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, ordinate{0}));
-
-    for (auto src_x = src_x_init; src_x < src_x_end; ++src_x, ++dest_x) {
-      auto const src_index = (src_y * source.stride_) + (src_x / 8U);
-      assert(src_index < source.store_.size());
-      auto const src_bit = source.store_[src_index] & (std::byte{0x80} >> (src_x % 8U));
-
-      auto const dest_index = (dest_y * stride_) + (dest_x / 8U);
-      assert(dest_index < store_.size());
-      auto const dest_bit = std::byte{0x80} >> (dest_x % 8U);
-
-      tranfer(store_[dest_index], src_bit, dest_bit, mode);
-    }
+    copy_row(src_x_init, src_x_end, &source.store_[src_y * source.stride_], dest_x, &store_[dest_y * stride_], mode);
   }
 }
 
 void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t const y, std::byte const pattern) {
   if (x0 > x1) {
-    std::swap(x0, x1);  // Ensure that we always go from lower to height addresses.
+    std::swap(x0, x1);  // Ensure that we always go from lower to higher addresses.
   }
+  // A gross clipping check.
   if (x0 >= width_ || y >= height_) {
     return;
   }
-  x1 = std::min(static_cast<std::uint16_t>(x1 + 1U), width_);
+  // Clamp x1 to the bitmap's right edge.
+  x1 = std::min(x1, static_cast<std::uint16_t>(width_ - 1U));
   auto it = store_.begin() + y * stride_ + x0 / 8U;
   assert(it < store_.end() && "iterator is not within the bitmap");
 
-  // mask_left is used for setting the last bits of a byte for the left-most pixels
-  auto const mask_left = std::byte{0xFF} >> (x0 % 8U);
-  // mask_right is used for setting the first bits of a byte for the right-most pixels
-  auto const mask_right = std::byte{0xFF} << (8U - (x1 % 8U));
+  // Masks used to set the least- and most-significant bits of a byte for the line's left- and right-most pixels
+  // respectively.
+  auto const mask_low = 0xFF_b >> (x0 % 8U);
+  auto const mask_high = 0xFF_b << (7U - (x1 % 8U));
 
-  if (x0 / 8U == x1 / 8U) {
+  auto bytes = (x1 / 8U) - (x0 / 8U);
+  if (bytes == 0U) {
     // The line lies entirely within a single byte.
-    auto const mask = mask_left & mask_right;
+    auto const mask = mask_low & mask_high;
     *it = (*it & ~mask) | (mask & pattern);
     return;
   }
 
   // First part of the line up until a byte boundary.
-  *it = (*it & ~mask_left) | (mask_left & pattern);
+  *it = (*it & ~mask_low) | (mask_low & pattern);
   ++it;
-  // Set whole bytes (8 pixels at a time) going from left to right.
-  for (auto bytes = (x1 / 8U) - (x0 / 8U) - 1U; bytes > 0; --bytes) {
+  --bytes;
+
+  // Set 8 pixels at a time going from left to right.
+  for (; bytes > 0; --bytes) {
     assert(it < store_.end() && "iterator is not within the bitmap");
     *it = pattern;
     ++it;
   }
-  // The final part of the line. Check that we don't write beyond the end of the buffer.
-  if (mask_right != std::byte{0}) {
-    assert(it < store_.end() && "iterator is not within the bitmap");
-    *it = (*it & ~mask_right) | (mask_right & pattern);
-  }
+  // The final part of the line.
+  assert(it < store_.end() && "iterator is not within the bitmap");
+  *it = (*it & ~mask_high) | (mask_high & pattern);
 }
 
 void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) {
@@ -128,7 +259,7 @@ void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) 
   assert(y0 < y1);
 
   auto index = static_cast<unsigned>(y0 * stride_ + x / 8);
-  auto const bits = std::byte{0x80} >> (x % 8);
+  auto const bits = 0x80_b >> (x % 8);
   for (auto y = y0; y < y1; ++y) {
     assert(index < store_.size() && "index is not within the bitmap");
     store_[index] |= bits;
@@ -141,7 +272,7 @@ void bitmap::line(point p0, point p1) {
     if (p0.y >= 0 && p0.y < height_) {
       this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, ordinate{0})),
                             static_cast<std::uint16_t>(std::max(p1.x, ordinate{0})), static_cast<std::uint16_t>(p0.y),
-                            std::byte{0xFF});
+                            0xFF_b);
     }
     return;
   }
@@ -200,14 +331,10 @@ std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_bitmap_and_store(s
   return std::tuple(std::move(store), bitmap{std::span{ptr, ptr + size}, width, height});
 }
 
-pattern const black{.data = {std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF},
-                             std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}}};
-pattern const white{.data = {std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-                             std::byte{0x00}, std::byte{0x00}, std::byte{0x00}}};
-pattern const gray{.data = {std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA}, std::byte{0x55}, std::byte{0xAA},
-                            std::byte{0x55}, std::byte{0xAA}, std::byte{0x55}}};
-pattern const light_gray{.data = {std::byte{0x88}, std::byte{0x42}, std::byte{0x88}, std::byte{0x42}, std::byte{0x88},
-                                  std::byte{0x42}, std::byte{0x88}, std::byte{0x42}}};
+pattern const black{.data = {0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b}};
+pattern const white{.data = {0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b}};
+pattern const gray{.data = {0xAA_b, 0x55_b, 0xAA_b, 0x55_b, 0xAA_b, 0x55_b, 0xAA_b, 0x55_b}};
+pattern const light_gray{.data = {0x88_b, 0x42_b, 0x88_b, 0x42_b, 0x88_b, 0x42_b, 0x88_b, 0x42_b}};
 
 void bitmap::paint_rect(rect const& r, pattern const& pat) {
   if (r.bottom < r.top || r.right < r.left || r.bottom < 0 || r.right < 0) {

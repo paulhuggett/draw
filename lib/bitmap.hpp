@@ -1,5 +1,5 @@
-#ifndef BITMAP_HPP
-#define BITMAP_HPP
+#ifndef DRAW_BITMAP_HPP
+#define DRAW_BITMAP_HPP
 
 #include <algorithm>
 #include <array>
@@ -14,8 +14,6 @@
 
 #include "types.hpp"
 
-struct font;
-
 namespace draw {
 
 class glyph_cache;
@@ -27,21 +25,20 @@ public:
   constexpr bitmap() noexcept = default;
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height, std::uint16_t stride) noexcept
       : store_{store}, width_{width}, height_{height}, stride_{stride} {
-    assert(store.size() >= this->actual_store_size());
-    constexpr auto max = static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max());
-    assert(width <= max);
-    assert(height <= max);
+    assert(store.size() >= this->actual_store_size() && "store is too small");
+    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "width is too great");
+    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "height is too great");
   }
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height) noexcept
       : bitmap(store, width, height, required_stride(width)) {}
 
   static constexpr std::uint16_t required_stride(std::uint16_t width) noexcept {
-    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()));
+    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "width is too great");
     return (width + 7U) / 8U;
   }
   /// Returns the store size required for a bitmap with the supplied dimensions.
   static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
-    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()));
+    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "height is too great");
     return required_stride(width) * height;
   }
 
@@ -76,8 +73,7 @@ private:
   std::uint16_t height_ = 0;  ///< Height of the bitmap in pixels
   std::uint16_t stride_ = 0;  ///< Number of bytes per row
 
-  void tranfer(std::byte& dest, std::byte const src_pixel, std::byte const dest_pixel, transfer_mode mode);
-  constexpr std::size_t actual_store_size() const { return stride_ * height_; }
+  constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
   void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte const pattern);
   void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);
 };
@@ -116,4 +112,4 @@ ordinate string_width(glyph_cache& gc, std::u8string_view s);
 
 }  // end namespace draw
 
-#endif  // BITMAP_HPP
+#endif  // DRAW_BITMAP_HPP
