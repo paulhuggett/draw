@@ -44,7 +44,6 @@ void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const
   dest += len;
   src += len;
   src_x += len * 8U;
-  dest_x += len * 8U;
   assert(src_x + 8U > src_x_end && "There should be less than a whole byte left to copy");
   if (src_x < src_x_end) {
     auto const mask = 0xFF_b << (8U - (src_x_end % 8U));
