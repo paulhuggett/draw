@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import sys
+import typing
 import unicodedata
 # 3rd party
 import png
@@ -135,8 +136,24 @@ extern draw::font const {name};
 #endif // {guard}
 ''')
 
+type KernDictValue = list[tuple[int, int]]
+type KernDict = dict[int, KernDictValue]
 
-type KernDict = dict[int, list[tuple[int, int]]]
+def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
+    source.write(f'std::array const kern_{k:04x} = {{')
+    separator = ''
+    for prev_cp, distance in kdv:
+        source.write(f'{separator}kerning_pair{{.preceeding={prev_cp},.distance={distance}}}')
+        separator = ','
+    source.write('};\n')
+
+def write_bitmap_data(source:typing.TextIO, k:int, data:tuple[int, ...]) -> None:
+    source.write(f'std::array const bitmap_{k:04x} = {{')
+    separator = ''
+    for value in data:
+        source.write(f'{separator}{value:#04x}_b')
+        separator = ','
+    source.write('};\n')
 
 def write_source_file(font:FontDict,
                       kd:KernDict,
@@ -162,21 +179,11 @@ namespace {
         source.write('std::array<kerning_pair, 0> const empty_kern;\n')
         for k, v in font.items():
             if k in kd:
-                source.write(f'std::array const kern_{k:04x} = {{')
-                separator = ''
-                for prev_cp, distance in kd[k]:
-                    source.write(f'{separator}kerning_pair{{.preceeding={prev_cp},.distance={distance}}}')
-                    separator = ','
-                source.write('};\n')
+                write_kerning_pairs(source, k, kd[k])
 
             if not isinstance(v, int):
                 widest = max(widest, len(v) // height)
-                source.write(f'std::array const bitmap_{k:04x} = {{')
-                separator = ''
-                for value in v:
-                    source.write(f'{separator}{value:#04x}_b')
-                    separator = ','
-                source.write('};\n')
+                write_bitmap_data(source, k, v)
 
         source.write(f'''}} // end ananymous namespace
 draw::font const {name} {{
