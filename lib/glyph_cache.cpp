@@ -5,6 +5,22 @@
 
 namespace draw {
 
+bitmap const& glyph_cache::get(char32_t code_point) {
+  return cache_
+      .access(
+          static_cast<std::uint32_t>(code_point),
+          [this, &code_point]() {
+            entry result;
+            result.store.resize(std::size_t{glyph_cache::stride(*font_) * glyph_cache::pixel_height(*font_)});
+            result.bm = this->render(&result.store, code_point);
+            return result;
+          },
+          [](entry&) {
+            // The supplied cache entry is being evicted. There's nothing special to do.
+          })
+      .bm;
+}
+
 font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
   auto pos = font_->glyphs.find(static_cast<std::uint32_t>(code_point));
   auto end = font_->glyphs.end();

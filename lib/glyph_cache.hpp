@@ -17,21 +17,7 @@ class glyph_cache {
 public:
   explicit constexpr glyph_cache(font const& f) noexcept : font_{&f} {}
 
-  [[nodiscard]] bitmap const& get(char32_t code_point) {
-    return cache_
-        .access(
-            static_cast<std::uint32_t>(code_point),
-            [this, &code_point]() {
-              entry result;
-              result.store.resize(std::size_t{this->stride(*font_) * this->pixel_height(*font_)});
-              result.bm = this->render(&result.store, code_point);
-              return result;
-            },
-            [](entry&) {
-              // The supplied cache entry is being evicted. There's nothing special to do.
-            })
-        .bm;
-  }
+  [[nodiscard]] bitmap const& get(char32_t code_point);
 
   [[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
   [[nodiscard]] font const* get_font() const noexcept { return font_; }
