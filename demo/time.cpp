@@ -1,18 +1,6 @@
-#include <bit>
-#include <cassert>
 #include <chrono>
-#include <cmath>
 #include <format>
-#include <locale>
-#include <print>
-#include <string>
 #include <string_view>
-#include <thread>
-#include <vector>
-
-// Curses
-#include <ncurses.h>
-#include <panel.h>
 
 // Draw
 #include "bitmap.hpp"
