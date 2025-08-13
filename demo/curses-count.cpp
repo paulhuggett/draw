@@ -90,8 +90,8 @@ int main() {
     // Erase the previous glyphs.
     frame_buffer.paint_rect(rect{.top = 0,
                                  .left = static_cast<ordinate>(frame_width - swidth),
-                                 .right = frame_width - 1U,
-                                 .bottom = frame_height - 1U},
+                                 .bottom = frame_height - 1U,
+                                 .right = frame_width - 1U},
                             draw::white);
 
     themometer(frame_buffer,
