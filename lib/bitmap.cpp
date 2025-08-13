@@ -1,6 +1,7 @@
 #include "bitmap.hpp"
 
 #include <cassert>
+#include <cstring>
 #include <print>
 #include <utility>
 
