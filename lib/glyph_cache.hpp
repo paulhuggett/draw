@@ -31,8 +31,9 @@ private:
   [[nodiscard]] static constexpr unsigned pixel_height(font const& f) { return f.height * 8U; }
 
   font const* font_;
+  /// A bitmap that is large enough to contain the largest glyph in the font.
+  // TODO: don't allocate a vector every time. Separate the store.
   struct entry {
-    /// A bitmap that is large enough to contain the largest glyph in the font.
     std::vector<std::byte> store;
     bitmap bm;
   };
