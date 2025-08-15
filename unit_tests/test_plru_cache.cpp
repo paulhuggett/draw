@@ -80,20 +80,28 @@ TEST(PlruCache, Fill) {
   EXPECT_EQ(cache.size(), 8);
 }
 
-struct counted {
+class counted {
+public:
   counted() : ctr_{++count_} { actions.emplace_back(action::ctor, ctr_); }
   counted(counted const&) = delete;
   counted(counted&&) = delete;
-  ~counted() { actions.emplace_back(action::dtor, ctr_); }
+  ~counted() noexcept {
+    try {
+      actions.emplace_back(action::dtor, ctr_);
+    } catch(...) {
+      // Just ignore any exceptions
+    }
+  }
 
   counted& operator=(counted const&) = delete;
   counted& operator=(counted&&) = delete;
 
-  unsigned ctr_ = 0;
-
-  static unsigned count_;
   enum class action { ctor, dtor };
   static std::vector<std::tuple<action, unsigned>> actions;
+
+private:
+  unsigned ctr_ = 0;
+  static unsigned count_;
 };
 
 unsigned counted::count_ = 0;
