@@ -54,28 +54,28 @@ TEST(PlruCache, Fill) {
       .WillOnce(Return("eighth"))
       .RetiresOnSaturation();
 
-  std::string& first = cache.access(1, mock_function.AsStdFunction());
+  std::string const& first = cache.access(1, mock_function.AsStdFunction());
   EXPECT_EQ(first, "first");
   EXPECT_EQ(cache.size(), 1);
-  std::string& second = cache.access(2, mock_function.AsStdFunction());
+  std::string const& second = cache.access(2, mock_function.AsStdFunction());
   EXPECT_EQ(second, "second");
   EXPECT_EQ(cache.size(), 2);
-  std::string& third = cache.access(3, mock_function.AsStdFunction());
+  std::string const& third = cache.access(3, mock_function.AsStdFunction());
   EXPECT_EQ(third, "third");
   EXPECT_EQ(cache.size(), 3);
-  std::string& fourth = cache.access(4, mock_function.AsStdFunction());
+  std::string const& fourth = cache.access(4, mock_function.AsStdFunction());
   EXPECT_EQ(fourth, "fourth");
   EXPECT_EQ(cache.size(), 4);
-  std::string& fifth = cache.access(5, mock_function.AsStdFunction());
+  std::string const& fifth = cache.access(5, mock_function.AsStdFunction());
   EXPECT_EQ(fifth, "fifth");
   EXPECT_EQ(cache.size(), 5);
-  std::string& sixth = cache.access(6, mock_function.AsStdFunction());
+  std::string const& sixth = cache.access(6, mock_function.AsStdFunction());
   EXPECT_EQ(sixth, "sixth");
   EXPECT_EQ(cache.size(), 6);
-  std::string& seventh = cache.access(7, mock_function.AsStdFunction());
+  std::string const& seventh = cache.access(7, mock_function.AsStdFunction());
   EXPECT_EQ(seventh, "seventh");
   EXPECT_EQ(cache.size(), 7);
-  std::string& eighth = cache.access(8, mock_function.AsStdFunction());
+  std::string const& eighth = cache.access(8, mock_function.AsStdFunction());
   EXPECT_EQ(eighth, "eighth");
   EXPECT_EQ(cache.size(), 8);
 }
