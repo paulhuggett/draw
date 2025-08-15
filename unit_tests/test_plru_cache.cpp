@@ -80,7 +80,12 @@ TEST(PlruCache, Fill) {
 
 struct counted {
   counted() : ctr_{++count_} { actions.emplace_back(action::ctor, ctr_); }
+  counted(counted const&) = delete;
+  counted(counted&&) = delete;
   ~counted() { actions.emplace_back(action::dtor, ctr_); }
+
+  counted& operator=(counted const&) = delete;
+  counted& operator=(counted&&) = delete;
 
   unsigned ctr_ = 0;
 
