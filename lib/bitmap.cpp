@@ -68,7 +68,8 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
 }
 
 template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* const src_row);
-template <> void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
+template <>
+[[maybe_unused]] void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
   for (auto x = src_x; x < src_x_end; ++x) {
     if (x % 8 == 0) {
       std::print("'");
@@ -77,7 +78,7 @@ template <> void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byt
   }
   std::print("    ");
 }
-template <> void trace_source<false>(unsigned, unsigned, std::byte const* const) {
+template <> [[maybe_unused]] void trace_source<false>(unsigned, unsigned, std::byte const* const) {
   // Just do nothing.
 }
 
