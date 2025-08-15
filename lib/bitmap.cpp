@@ -78,6 +78,7 @@ template <> void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byt
   std::print("    ");
 }
 template <> void trace_source<false>(unsigned, unsigned, std::byte const* const) {
+  // Just do nothing.
 }
 
 void transfer(std::byte* const dest, std::byte mask, std::byte v, bitmap::transfer_mode mode) {
@@ -99,7 +100,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
   auto* dest = dest_row + (dest_x / 8U);
 
   constexpr bool trace = false;
-  trace_source<true>(src_x, src_x_end, src_row);
+  trace_source<trace>(src_x, src_x_end, src_row);
 
   auto const m = dest_x % 8U;
   auto const mask_high = 0xFF_b << m;
@@ -144,7 +145,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
       v = *src << (src_x % 8U);
       v &= 0xFF_b << (8U - remaining);
     }
-    transfer(dest, mask_low, v, mode);
+    transfer(dest, ~mask_low, v, mode);
   }
 
   if constexpr (trace) {
