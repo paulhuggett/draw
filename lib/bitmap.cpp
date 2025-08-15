@@ -13,15 +13,6 @@ using draw::bitmap;
 
 namespace {
 
-void transfer(std::byte* const dest, std::byte const src_bit, std::byte const dest_bit, bitmap::transfer_mode mode) {
-  auto out = (static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit);
-  switch (mode) {
-  case bitmap::transfer_mode::mode_or: *dest |= out; break;
-  case bitmap::transfer_mode::mode_copy: *dest = (*dest & ~dest_bit) | out; break;
-  default: assert(false && "unknown transfer mode"); break;
-  }
-}
-
 void memor(std::byte* dest, std::byte const* src, std::size_t len) {
   for (; len > 0; --len) {
     *(dest++) |= *(src++);
@@ -56,35 +47,59 @@ void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const
   return;
 }
 
+void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
+                   std::byte* const dest_row, bitmap::transfer_mode mode) {
+  assert(src_x % 8U != dest_x % 8U);
+  // There's less than a byte to copy.
+  // TODO: don't do this one pixel at a time.
+  auto const* src = src_row + (src_x / 8U);
+  for (; src_x < src_x_end; ++src_x, ++dest_x) {
+    auto const src_bit = *src & (0x80_b >> (src_x % 8U));
+    auto const dest_bit = 0x80_b >> (dest_x % 8U);
+
+    auto* const dest = dest_row + (dest_x / 8U);
+    auto out = (static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit);
+    switch (mode) {
+    case bitmap::transfer_mode::mode_or: *dest |= out; break;
+    case bitmap::transfer_mode::mode_copy: *dest = (*dest & ~dest_bit) | out; break;
+    default: assert(false && "unknown transfer mode"); break;
+    }
+  }
+}
+
+template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* const src_row);
+template <> void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
+  for (auto x = src_x; x < src_x_end; ++x) {
+    if (x % 8 == 0) {
+      std::print("'");
+    }
+    std::print("{:c}", (src_row[x / 8] & (0x80_b >> (x % 8))) != std::byte{0} ? '1' : '0');
+  }
+  std::print("    ");
+}
+template <> void trace_source<false>(unsigned, unsigned, std::byte const* const) {
+}
+
+void transfer(std::byte* const dest, std::byte mask, std::byte v, bitmap::transfer_mode mode) {
+  using enum bitmap::transfer_mode;
+  switch (mode) {
+  case mode_or: *dest |= v; break;
+  case mode_copy: *dest = (*dest & ~mask) | v; break;
+  default: assert(false && "unknown transfer mode"); break;
+  }
+}
+
 void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
                          std::byte* const dest_row, bitmap::transfer_mode mode) {
   using enum bitmap::transfer_mode;
   assert(src_x % 8U != dest_x % 8U);
+  assert(src_x + 8 <= src_x_end);
 
   auto const* src = src_row + (src_x / 8U);
   auto* dest = dest_row + (dest_x / 8U);
 
-  if (src_x + 8 > src_x_end) {
-    // There's less than a byte to copy.
-    // TODO: don't do this one pixel at a time.
-    for (; src_x < src_x_end; ++src_x, ++dest_x) {
-      auto const src_bit = *src & (0x80_b >> (src_x % 8U));
-      auto const dest_bit = 0x80_b >> (dest_x % 8U);
-      transfer(dest_row + (dest_x / 8U), src_bit, dest_bit, mode);
-    }
-    return;
-  }
-
   constexpr bool trace = false;
-  if constexpr (trace) {
-    for (auto x = src_x; x < src_x_end; ++x) {
-      if (x % 8 == 0) {
-        std::print("'");
-      }
-      std::print("{:c}", (src_row[x / 8] & (0x80_b >> (x % 8))) != std::byte{0} ? '1' : '0');
-    }
-    std::print("    ");
-  }
+  trace_source<true>(src_x, src_x_end, src_row);
 
   auto const m = dest_x % 8U;
   auto const mask_high = 0xFF_b << m;
@@ -92,12 +107,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
 
   if (src_x + 8U <= src_x_end) {
     // The initial partial byte.
-    switch (mode) {
-    case mode_or: *dest |= (*src & mask_high) >> m; break;
-    case mode_copy: *dest = (*dest & ~mask_low) | ((*src & mask_high) >> m); break;
-    default: assert(false && "unknown transfer mode"); break;
-    }
-
+    transfer(dest, mask_low, (*src & mask_high) >> m, mode);
     if constexpr (trace) {
       std::print("{:08b}'", std::to_underlying(*dest));
     }
@@ -108,13 +118,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
 
     // Copying a byte at a time.
     while (src_x + 8U <= src_x_end) {
-      auto const v = ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m);
-      switch (mode) {
-      case mode_or: *dest |= v; break;
-      case mode_copy: *dest = v; break;
-      default: assert(false && "unknown transfer mode"); break;
-      }
-
+      transfer(dest, std::byte{0xFF}, ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m), mode);
       if constexpr (trace) {
         std::print("{:08b}'", std::to_underlying(*dest));
       }
@@ -140,12 +144,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
       v = *src << (src_x % 8U);
       v &= 0xFF_b << (8U - remaining);
     }
-
-    switch (mode) {
-    case mode_or: *dest |= v; break;
-    case mode_copy: *dest = v | (*dest & mask_low); break;
-    default: assert(false && "unknown transfer mode"); break;
-    }
+    transfer(dest, mask_low, v, mode);
   }
 
   if constexpr (trace) {
@@ -159,7 +158,11 @@ void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const sr
   if (src_x_init % 8U == dest_x % 8U) {
     copy_row_aligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
   } else {
-    copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+    if (src_x_init + 8 > src_x_end) {
+      copy_row_tiny(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+    } else {
+      copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+    }
   }
 }
 
