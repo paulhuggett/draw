@@ -151,7 +151,7 @@ public:
   constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
   constexpr std::size_t size() const noexcept {
     return std::ranges::fold_left(sets_, std::size_t{0},
-                                  [](std::size_t acc, auto const &set) { return acc + set.size(); });
+                                  [](std::size_t acc, auto const &set) { return acc + std::size(set); });
   }
 
 private:

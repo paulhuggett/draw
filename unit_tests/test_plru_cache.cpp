@@ -26,15 +26,17 @@ TEST(PlruCache, InitialAccess) {
   MockFunction<std::string()> mock_function;
 
   EXPECT_CALL(mock_function, Call()).WillOnce(Return(value)).RetiresOnSaturation();
-
-  std::string& actual1 = cache.access(3, mock_function.AsStdFunction());
-  EXPECT_EQ(actual1, value);
-  EXPECT_EQ(cache.size(), 1);
-
-  // A second call with the same key doesn't create a new member.
-  std::string& actual2 = cache.access(3, mock_function.AsStdFunction());
-  EXPECT_EQ(actual1, value);
-  EXPECT_EQ(cache.size(), 1);
+  {
+    std::string const& actual1 = cache.access(3U, mock_function.AsStdFunction());
+    EXPECT_EQ(actual1, value);
+    EXPECT_EQ(std::size(cache), 1U);
+  }
+  {
+    // A second call with the same key doesn't create a new member.
+    std::string const& actual2 = cache.access(3U, mock_function.AsStdFunction());
+    EXPECT_EQ(actual2, value);
+    EXPECT_EQ(std::size(cache), 1U);
+  }
 }
 
 TEST(PlruCache, Fill) {
