@@ -5,17 +5,18 @@
 
 namespace draw {
 
-bitmap const& glyph_cache::get(char32_t code_point) {
-  return cache_
-      .access(
-          static_cast<std::uint32_t>(code_point),
-          [this, &code_point]() {
-            entry result;
-            result.store.resize(std::size_t{glyph_cache::stride(*font_) * glyph_cache::pixel_height(*font_)});
-            result.bm = this->render(&result.store, code_point);
-            return result;
-          })
-      .bm;
+bitmap const& glyph_cache::get(char32_t const code_point) {
+  std::uint32_t const key = static_cast<std::uint32_t>(code_point);
+  return cache_.access(key, [this, key, code_point]() {
+    // Called when a glyph was not found in the cache.
+    constexpr auto mask = decltype(cache_)::sets * decltype(cache_)::ways - 1U;
+    std::size_t const index = key & mask;
+    std::size_t const size = glyph_cache::store_size(*this->font_);
+    auto const begin = std::begin(store_) + index * size;
+    auto const end = begin + size;
+    assert(end <= std::end(store_));
+    return this->render(std::span{begin, end}, code_point);
+  });
 }
 
 font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
@@ -32,7 +33,7 @@ font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
   return &pos->second;
 }
 
-bitmap glyph_cache::render(std::vector<std::byte>* const bitmap_store, char32_t code_point) {
+bitmap glyph_cache::render(std::span<std::byte> bitmap_store, char32_t code_point) {
   auto height = static_cast<std::uint16_t>(font_->height * 8);
 
   font::glyph const* glyph = this->find_glyph(code_point);
@@ -40,7 +41,7 @@ bitmap glyph_cache::render(std::vector<std::byte>* const bitmap_store, char32_t 
   auto const& bitmaps = std::get<std::span<std::byte const>>(*glyph);
   // auto const width = static_cast<std::uint16_t>(bitmaps.size() / f.height);
   auto const width = font_->width(*glyph);
-  bitmap bm{*bitmap_store, width, height};
+  bitmap bm{bitmap_store, width, height};
   for (auto y = std::size_t{0}; y < height; ++y) {
     if constexpr (trace_unpack) {
       std::print("|");
@@ -61,8 +62,8 @@ bitmap glyph_cache::render(std::vector<std::byte>* const bitmap_store, char32_t 
         }
 
         auto const dest_index = y * bm.stride() + (x / 8U);
-        assert(dest_index < bitmap_store->size() && "The destination byte is not within the bitmap store");
-        (*bitmap_store)[dest_index] = pixels;
+        assert(dest_index < bitmap_store.size() && "The destination byte is not within the bitmap store");
+        bitmap_store[dest_index] = pixels;
         if constexpr (trace_unpack) {
           auto const get_pixel = [pixels](unsigned bit) {
             return (pixels & (std::byte{1} << bit)) != std::byte{0} ? 'X' : ' ';

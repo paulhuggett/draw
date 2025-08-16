@@ -132,6 +132,8 @@ class plru_cache {
 public:
   using key_type = Key;
   using mapped_type = T;
+  static constexpr std::size_t const sets = Sets;
+  static constexpr std::size_t const ways = Ways;
 
   /// Searches the cache for the \p key and returns a reference to it if present. If not present
   /// and the cache is fully occupied, the likely least recently used value is evicted from the

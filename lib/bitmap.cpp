@@ -357,6 +357,12 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
+std::uint16_t bitmap::char_width(glyph_cache& gc, char32_t code_point) {
+  font::glyph const* const g = gc.find_glyph(code_point);
+  assert(g != nullptr);
+  return gc.get_font()->width(*g);
+}
+
 void bitmap::draw_char(glyph_cache& gc, char32_t code_point, point pos) {
   if (pos.x > this->width() || pos.y > this->height()) {
     return;
@@ -384,7 +390,7 @@ static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::option
 template <typename DrawFn>
 static ordinate scan_code_point(ordinate x, glyph_cache& gc, char32_t code_point,
                                 std::optional<char32_t> prev_code_point, DrawFn draw) {
-  font::glyph const* g = gc.find_glyph(code_point);
+  font::glyph const* const g = gc.find_glyph(code_point);
   x += glyph_spacing(gc, *g, prev_code_point);
   draw(code_point, x);
   x += gc.get_font()->width(*g);
