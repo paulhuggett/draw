@@ -65,7 +65,7 @@ public:
   /// \param gc  The glyph cache
   /// \param code_point  The code point specifying the glyph to be drawn
   /// \returns The width of the specified glyph
-  std::uint16_t char_width(glyph_cache& gc, char32_t code_point);
+  std::uint16_t char_width(glyph_cache const& gc, char32_t code_point);
 
   [[nodiscard]] constexpr std::uint16_t width() const noexcept { return width_; }
   [[nodiscard]] constexpr std::uint16_t height() const noexcept { return height_; }

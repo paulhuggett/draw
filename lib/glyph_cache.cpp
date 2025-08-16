@@ -6,7 +6,7 @@
 namespace draw {
 
 bitmap const& glyph_cache::get(char32_t const code_point) {
-  std::uint32_t const key = static_cast<std::uint32_t>(code_point);
+  auto const key = static_cast<std::uint32_t>(code_point);
   return cache_.access(key, [this, key, code_point]() {
     // Called when a glyph was not found in the cache.
     constexpr auto mask = decltype(cache_)::sets * decltype(cache_)::ways - 1U;

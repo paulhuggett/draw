@@ -357,7 +357,7 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
-std::uint16_t bitmap::char_width(glyph_cache& gc, char32_t code_point) {
+std::uint16_t bitmap::char_width(glyph_cache const& gc, char32_t code_point) {
   font::glyph const* const g = gc.find_glyph(code_point);
   assert(g != nullptr);
   return gc.get_font()->width(*g);
