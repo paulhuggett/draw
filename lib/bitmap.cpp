@@ -50,6 +50,15 @@ void memor(std::byte* dest, std::byte const* src, std::size_t len) {
   }
 }
 
+void transfer(std::byte* const dest, std::byte mask, std::byte v, bitmap::transfer_mode mode) {
+  using enum bitmap::transfer_mode;
+  switch (mode) {
+  case mode_or: *dest |= v; break;
+  case mode_copy: *dest = (*dest & ~mask) | v; break;
+  default: assert(false && "unknown transfer mode"); break;
+  }
+}
+
 void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
                       std::byte* const dest_row, bitmap::transfer_mode mode) {
   using enum bitmap::transfer_mode;
@@ -63,19 +72,12 @@ void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const
   case mode_or: memor(dest, src, len); break;
   default: assert(false && "unknown transfer mode"); break;
   }
-  dest += len;
-  src += len;
   src_x += len * 8U;
   assert(src_x + 8U > src_x_end && "There should be less than a whole byte left to copy");
   if (src_x < src_x_end) {
     auto const mask = 0xFF_b << (8U - (src_x_end % 8U));
-    switch (mode) {
-    case mode_or: *dest |= *src & mask; break;
-    case mode_copy: *dest = (*src & mask) | (*dest & ~mask); break;
-    default: assert(false && "unknown transfer mode"); break;
-    }
+    transfer(dest + len, mask, *(src + len) & mask, mode);
   }
-  return;
 }
 
 void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
@@ -111,15 +113,6 @@ template <>
 }
 template <> [[maybe_unused]] void trace_source<false>(unsigned, unsigned, std::byte const* const) {
   // Just do nothing.
-}
-
-void transfer(std::byte* const dest, std::byte mask, std::byte v, bitmap::transfer_mode mode) {
-  using enum bitmap::transfer_mode;
-  switch (mode) {
-  case mode_or: *dest |= v; break;
-  case mode_copy: *dest = (*dest & ~mask) | v; break;
-  default: assert(false && "unknown transfer mode"); break;
-  }
 }
 
 void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
@@ -190,12 +183,10 @@ void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const sr
   assert(src_x_init <= src_x_end);
   if (src_x_init % 8U == dest_x % 8U) {
     copy_row_aligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
+  } else if (src_x_init + 8 > src_x_end) {
+    copy_row_tiny(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
   } else {
-    if (src_x_init + 8 > src_x_end) {
-      copy_row_tiny(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
-    } else {
-      copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
-    }
+    copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
   }
 }
 
