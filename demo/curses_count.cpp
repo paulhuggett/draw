@@ -12,11 +12,11 @@
 #include <panel.h>
 
 // Draw
-#include "bitmap.hpp"
-#include "glyph_cache.hpp"
-#include "sans16.hpp"
-#include "sans32.hpp"
-#include "types.hpp"
+#include "draw/bitmap.hpp"
+#include "draw/glyph_cache.hpp"
+#include "draw/sans16.hpp"
+#include "draw/sans32.hpp"
+#include "draw/types.hpp"
 
 using namespace std::string_view_literals;
 using namespace draw::literals;

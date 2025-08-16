@@ -59,11 +59,11 @@ private:
 };
 
 template <typename MappedType, std::size_t IndexBits, std::size_t Ways>
-requires(IndexBits < sizeof(std::size_t) * CHAR_BIT - 1)
+  requires(IndexBits < sizeof(std::size_t) * CHAR_BIT - 1)
 class cache_set {
 public:
   template <typename MissFn>
-  requires(std::is_invocable_r_v<MappedType, MissFn>)
+    requires(std::is_invocable_r_v<MappedType, MissFn>)
   MappedType &access(std::size_t tag, MissFn miss) {
     assert(tag < (~std::size_t{0} >> IndexBits));
     auto const new_tag = tvs{true, tag};
@@ -127,7 +127,7 @@ private:
 ///   ways in a set determines how many entries with the same key fragment or bucket index can
 ///   coexist.
 template <typename Key, typename T, std::size_t Sets, std::size_t Ways>
-requires(std::is_unsigned_v<Key> && std::popcount(Sets) == 1 && std::popcount(Ways) == 1)
+  requires(std::is_unsigned_v<Key> && std::popcount(Sets) == 1 && std::popcount(Ways) == 1)
 class plru_cache {
 public:
   using key_type = Key;
@@ -145,7 +145,7 @@ public:
   ///   is not present in the cache.
   /// \returns The cached value.
   template <typename MissFn>
-  requires(std::is_invocable_r_v<T, MissFn>)
+    requires(std::is_invocable_r_v<T, MissFn>)
   mapped_type &access(Key const &key, MissFn miss) {
     return sets_[key & (Sets - 1U)].access(key >> index_bits_, miss);
   }
@@ -161,6 +161,6 @@ private:
   std::array<details::cache_set<T, index_bits_, Ways>, Sets> sets_{};
 };
 
-} // end namespace draw
+}  // end namespace draw
 
 #endif  // PLRU_HPP

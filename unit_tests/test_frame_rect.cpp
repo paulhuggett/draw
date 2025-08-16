@@ -3,7 +3,7 @@
 
 #include <tuple>
 
-#include "bitmap.hpp"
+#include "draw/bitmap.hpp"
 
 using testing::ElementsAre;
 using namespace draw::literals;

@@ -1,13 +1,15 @@
 add_custom_command(
   COMMAND
-    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}" sans_font/16/sans16.json
+    mkdir -p "${CMAKE_CURRENT_BINARY_DIR}/draw"
   COMMAND
-    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}" sans_font/32/sans32.json
+    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/16/sans16.json
+  COMMAND
+    "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/32/sans32.json
   OUTPUT
-    "${CMAKE_CURRENT_BINARY_DIR}/sans16.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans16.hpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans32.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/sans32.hpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.hpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.hpp"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Building Sans Font"
   DEPENDS
@@ -36,14 +38,18 @@ add_custom_command(
 )
 add_library(draw-font STATIC )
 target_sources(draw-font PRIVATE
-  "${CMAKE_CURRENT_BINARY_DIR}/sans16.cpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans16.hpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans32.cpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/sans32.hpp"
+  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.cpp"
+  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.hpp"
+  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.cpp"
+  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.hpp"
   font.py
   sans_font/16/sans16.json
   sans_font/32/sans32.json
 )
-target_include_directories(draw-font PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
-target_include_directories(draw-font PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
+target_include_directories(draw-font
+  PUBLIC "${DRAW_PROJECT_ROOT}/include"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
+    PUBLIC "${CMAKE_CURRENT_BINARY_DIR}"
+)
 setup_target(draw-font)

@@ -83,7 +83,7 @@ function (setup_target target)
   )
 endfunction(setup_target)
 
-
+set(DRAW_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(lib)
 
 if (DRAW_UNIT_TESTS)

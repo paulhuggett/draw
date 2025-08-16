@@ -165,8 +165,8 @@ def write_source_file(font:FontDict,
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
         source.write('''
-#include "font.hpp"
-#include "types.hpp"
+#include "draw/font.hpp"
+#include "draw/types.hpp"
 #include <array>
 #include <cassert>
 using namespace draw::literals;

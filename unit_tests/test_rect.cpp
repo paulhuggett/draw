@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "bitmap.hpp"
-#include "types.hpp"
+#include "draw/bitmap.hpp"
+#include "draw/types.hpp"
 
 namespace draw {
 

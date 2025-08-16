@@ -1,12 +1,12 @@
-#include "bitmap.hpp"
+#include "draw/bitmap.hpp"
 
 #include <cassert>
 #include <cstring>
 #include <print>
 #include <utility>
 
-#include "glyph_cache.hpp"
-#include "icubaby.hpp"
+#include "draw/glyph_cache.hpp"
+#include "draw/icubaby.hpp"
 
 using namespace draw::literals;
 using draw::bitmap;

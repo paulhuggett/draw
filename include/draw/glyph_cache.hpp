@@ -47,6 +47,6 @@ private:
   plru_cache<std::uint32_t, bitmap, 8, 2> cache_;
 };
 
-} // end namespace draw
+}  // end namespace draw
 
 #endif  // DRAW_GLYPH_CACHE_HPP

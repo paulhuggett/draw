@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "bitmap.hpp"
+#include "draw/bitmap.hpp"
 
 using testing::ElementsAre;
 using testing::ElementsAreArray;
