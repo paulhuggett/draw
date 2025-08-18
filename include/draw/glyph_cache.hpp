@@ -49,7 +49,7 @@ public:
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store);
+  [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) const;
   [[nodiscard]] static std::size_t get_store_size(font const* const f) noexcept;
 
   std::size_t store_size_ = std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size));
