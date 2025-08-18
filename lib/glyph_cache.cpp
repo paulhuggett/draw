@@ -43,8 +43,7 @@ constexpr bool trace_unpack = false;
 
 namespace draw {
 
-glyph_cache::glyph_cache() noexcept
-    : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
+glyph_cache::glyph_cache() noexcept {
   store_.resize(cache_.max_size() * store_size_);
 }
 

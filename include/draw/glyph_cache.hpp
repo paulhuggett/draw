@@ -52,7 +52,8 @@ private:
   [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store);
   [[nodiscard]] static std::size_t get_store_size(font const* const f) noexcept;
 
-  std::size_t store_size_;
+  std::size_t store_size_ = std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size));
+
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::vector<std::byte> store_;
   // TODO: the value could be just the offset into store_ of the data start.
