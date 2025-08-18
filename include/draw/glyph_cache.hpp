@@ -47,26 +47,22 @@ class glyph_cache {
   static constexpr bool trace_unpack = false;
 
 public:
-  constexpr glyph_cache() noexcept {
-    store_size_ = std::ranges::max(all_fonts | std::views::transform([](font const* const f) {
-                                     std::size_t const stride = (f->widest + 7U) / 8U;
-                                     std::size_t const pixel_height = f->height * 8U;
-                                     return stride * pixel_height;
-                                   }));
+  constexpr glyph_cache() noexcept
+      : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
     store_.resize(cache_.max_size() * store_size_);
   }
 
   [[nodiscard]] bitmap const& get(font const& f, char32_t const code_point);
 
-  //[[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
-  //[[nodiscard]] constexpr font const* get_font() const noexcept { return font_; }
-  //[[nodiscard]] constexpr std::uint8_t spacing() const noexcept { return font_->spacing; }
-
 private:
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store);
 
-  //[[nodiscard]] static std::size_t store_size(font const& f) noexcept;
+  static std::size_t get_store_size(font const* const f) noexcept {
+    std::size_t const stride = (f->widest + 7U) / 8U;
+    std::size_t const pixel_height = f->height * 8U;
+    return stride * pixel_height;
+  }
 
   std::size_t store_size_;
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
