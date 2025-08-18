@@ -55,11 +55,11 @@ int main() {
   constexpr auto frame_height = ordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  draw::glyph_cache gc{sans32};
+  draw::glyph_cache gc;
 
   std::array<char8_t, 8> time_str;
   auto const first = time_str.begin();
   auto const last = std::format_to_n(first, time_str.size(), "{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(std::chrono::system_clock::now())).out;
-  frame_buffer.draw_string(gc, std::u8string_view{first, last}, point{.x = 0, .y = 0});
+  frame_buffer.draw_string(gc, sans32, std::u8string_view{first, last}, point{.x = 0, .y = 0});
   frame_buffer.dump();
 }

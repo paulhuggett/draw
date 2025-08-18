@@ -37,10 +37,12 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/bitmap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/icubaby.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/types.hpp"
 
   bitmap.cpp
+  font.cpp
   glyph_cache.cpp
 )
 target_include_directories(draw

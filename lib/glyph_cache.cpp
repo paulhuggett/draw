@@ -36,42 +36,30 @@
 
 namespace draw {
 
-bitmap const& glyph_cache::get(char32_t const code_point) {
+bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
   auto const key = static_cast<std::uint32_t>(code_point);
-  return cache_.access(key, [this, key, code_point]() {
+  return cache_.access(key, [this, &f, key, code_point]() {
     // Called when a glyph was not found in the cache.
-    constexpr auto mask = decltype(cache_)::sets * decltype(cache_)::ways - 1U;
-    std::size_t const index = key & mask;
-    std::size_t const size = glyph_cache::store_size(*this->font_);
+    using cache = decltype(cache_);
+    assert(cache::set(key) < cache::sets);
+    assert(cache::way(key) < cache::ways);
+    std::size_t const index = cache::set(key) * cache::ways + cache::way(key);
+    std::size_t const size = this->store_size_;
     auto const begin = std::begin(store_) + index * size;
     auto const end = begin + size;
     assert(end <= std::end(store_));
-    return this->render(std::span{begin, end}, code_point);
+    return this->render(f, code_point, std::span{begin, end});
   });
 }
 
-font::glyph const* glyph_cache::find_glyph(char32_t code_point) const {
-  auto pos = font_->glyphs.find(static_cast<std::uint32_t>(code_point));
-  auto end = font_->glyphs.end();
-  if (pos == end) {
-    pos = font_->glyphs.find(white_square);
-    if (pos == end) {
-      // We've got no definition for the requested code point and no definition for U+25A1 (WHITE SQUARE). Last resort
-      // is just some whitespace.
-      pos = font_->glyphs.begin();
-    }
-  }
-  return &pos->second;
-}
+bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) {
+  auto height = static_cast<std::uint16_t>(f.height * 8);
 
-bitmap glyph_cache::render(std::span<std::byte> bitmap_store, char32_t code_point) {
-  auto height = static_cast<std::uint16_t>(font_->height * 8);
-
-  font::glyph const* glyph = this->find_glyph(code_point);
+  font::glyph const* glyph = f.find_glyph(code_point);
 
   auto const& bitmaps = std::get<std::span<std::byte const>>(*glyph);
   // auto const width = static_cast<std::uint16_t>(bitmaps.size() / f.height);
-  auto const width = font_->width(*glyph);
+  auto const width = f.width(*glyph);
   bitmap bm{bitmap_store, width, height};
   for (auto y = std::size_t{0}; y < height; ++y) {
     if constexpr (trace_unpack) {
@@ -85,7 +73,7 @@ bitmap glyph_cache::render(std::span<std::byte> bitmap_store, char32_t code_poin
       for (; x < (width & ~0b111U); x += 8) {
         auto pixels = std::byte{0};
         for (auto bit = 0U; bit < 8U; ++bit) {
-          auto const src_index = ((x + bit) * font_->height) + (y / 8U);
+          auto const src_index = ((x + bit) * f.height) + (y / 8U);
           assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
           if ((bitmaps[src_index] & (std::byte{1} << (y % 8U))) != std::byte{0}) {
             pixels |= std::byte{0x80} >> bit;
@@ -107,7 +95,7 @@ bitmap glyph_cache::render(std::span<std::byte> bitmap_store, char32_t code_poin
     }
 
     for (; x < width; ++x) {
-      auto const src_index = (x * font_->height) + (y / 8U);
+      auto const src_index = (x * f.height) + (y / 8U);
       assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
       auto const pixel = bitmaps[src_index] & (std::byte{1} << (y % 8U));
       bm.set(point{.x = static_cast<ordinate>(x), .y = static_cast<ordinate>(y)}, pixel != std::byte{0});
@@ -116,7 +104,7 @@ bitmap glyph_cache::render(std::span<std::byte> bitmap_store, char32_t code_poin
       }
     }
     if constexpr (trace_unpack) {
-      std::println("|{0}", y == font_->baseline ? "<-" : "");
+      std::println("|{0}", y == f.baseline ? "<-" : "");
     }
   }
   return bm;

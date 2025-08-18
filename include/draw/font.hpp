@@ -37,6 +37,7 @@
 #include <span>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
 namespace draw {
 
@@ -56,10 +57,11 @@ struct kerning_pair {
 // column of pixels in the font. The least significant bit in each byte holds the pixel value for
 // the smallest y position.
 struct font {
-  std::uint8_t baseline;
-  std::uint8_t widest;
-  std::uint8_t height;  // in bytes rather than pixels.
-  std::uint8_t spacing;
+  std::uint8_t id = 0;
+  std::uint8_t baseline = 0;
+  std::uint8_t widest = 0;
+  std::uint8_t height : 4 = 0;  // in bytes rather than pixels.
+  std::uint8_t spacing : 4 = 0;
 
   using glyph = std::tuple<std::span<kerning_pair const>, std::span<std::byte const>>;
 
@@ -68,11 +70,27 @@ struct font {
     return static_cast<std::uint16_t>(bitmap.size() / this->height);
   }
 
+  glyph const* find_glyph(char32_t code_point) const {
+    auto pos = glyphs.find(static_cast<std::uint32_t>(code_point));
+    auto end = glyphs.end();
+    if (pos == end) {
+      pos = glyphs.find(white_square);
+      if (pos == end) {
+        // We've got no definition for the requested code point and no definition for U+25A1 (WHITE SQUARE). Last resort
+        // is the first glyph.
+        pos = glyphs.begin();
+      }
+    }
+    return &pos->second;
+  }
+
   // TODO: replace this with iumap<>
   // [https://github.com/paulhuggett/AM_MIDI2.0Lib/blob/main/include/midi2/adt/iumap.hpp]
   // (or something like it).
   std::unordered_map<std::uint32_t, glyph> glyphs;
 };
+
+extern std::vector<font const*> all_fonts;
 
 }  // end namespace draw
 

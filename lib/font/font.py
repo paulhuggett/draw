@@ -60,6 +60,7 @@ def is_splitable(no_split:SplitList, x:int) -> tuple[SplitList, bool]:
             no_split = no_split[1:]  # Remove this region from the no-split list
     return (no_split, splitable)
 
+
 def read_png(file:pathlib.Path):
     reader = png.Reader(filename=file)
     width, height, pixels, metadata = reader.asRGBA8()
@@ -71,6 +72,7 @@ def read_png(file:pathlib.Path):
     if height % 8 != 0:
         raise RuntimeError('Height must be a multiple of 8!')
     return width, height, pixels
+
 
 type InputList = list[dict[str, Any]]
 
@@ -156,7 +158,8 @@ def dump_char(glyph:tuple[int, ...] | int, height:int) -> None:
         print()
 
 
-def write_header_file(output_dir:pathlib.Path, name:str) -> None:
+def write_header_file(output_dir:pathlib.Path, definition:dict[str, Any]) -> None:
+    name:str = definition['name']
     with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as header:
         guard = 'DRAW_FONT_' + name.upper() + '_HPP'
         header.write(f'''{SIGNATURE}
@@ -166,6 +169,7 @@ namespace draw {{ struct font; }}
 extern draw::font const {name};
 #endif // {guard}
 ''')
+
 
 type KernDictValue = list[tuple[int, int]]
 type KernDict = dict[int, KernDictValue]
@@ -178,6 +182,7 @@ def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
         separator = ','
     source.write('};\n')
 
+
 def write_bitmap_data(source:typing.TextIO, k:int, data:tuple[int, ...]) -> None:
     source.write(f'std::array const bitmap_{k:04x} = {{')
     separator = ''
@@ -186,12 +191,15 @@ def write_bitmap_data(source:typing.TextIO, k:int, data:tuple[int, ...]) -> None
         separator = ','
     source.write('};\n')
 
+
 def write_source_file(font:FontDict,
                       kd:KernDict,
                       height:int,
                       output_dir:pathlib.Path,
-                      name:str,
-                      spacing:int) -> None:
+                      definition:dict[str, Any]) -> None:
+    id = int(definition['id'])
+    name:str = definition['name']
+    spacing = int(definition['spacing'])
     with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
@@ -218,6 +226,7 @@ namespace {
 
         source.write(f'''}} // end ananymous namespace
 draw::font const {name} {{
+  .id={id},
   .baseline={baseline},
   .widest={widest},
   .height={height},
@@ -225,15 +234,25 @@ draw::font const {name} {{
   .glyphs={{
 ''')
         for k, v in font.items():
-            name = unicodedata.name(chr(k), '')
-            if len(name) > 0:
-                name = "// " + name
+            kname = unicodedata.name(chr(k), '')
+            if len(kname) > 0:
+                kname = "// " + kname
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
             kp_name = f'kern_{k:04x}' if k in kd else 'empty_kern'
-            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {name}\n')
+            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {kname}\n')
         source.write('  }\n};\n')
+
+        source.write(f'''
+namespace {{
+struct ctor {{
+  ctor() {{ draw::all_fonts.push_back(&{name}); }}
+}};
+ctor c;
+}}
+''')
+
 
 def str_to_cp(s) -> int:
     if not isinstance(s, str):
@@ -241,6 +260,7 @@ def str_to_cp(s) -> int:
     if len(s) != 1:
         raise RuntimeError("string must be one character")
     return ord(s[0])
+
 
 def uniqued(iterable, key=None):
     if key is None:
@@ -251,6 +271,7 @@ def uniqued(iterable, key=None):
         if k not in seen:
             seen.add(k)
             yield v
+
 
 type JsonKernList = dict[str, list[tuple[str, int]]]
 
@@ -273,7 +294,15 @@ def kern_pairs(kl:JsonKernList) -> KernDict:
     return { k: sorted(uniqued(v, key=key), key=key) for k,v in kernd.items() }
 
 
-def main():
+def samples(font: FontDict, height:int) -> None:
+    for c in sorted(font.keys()):
+        name = unicodedata.name(chr(c), 'UNKNOWN')
+        print(f'code point U+{c:04X} {name}:')
+        dump_char(font[c], height)
+        print()
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description='Font Generator')
     parser.add_argument('file', help='JSON metadata describing the input files', type=pathlib.Path)
     parser.add_argument('-o', '--output-dir', help='Output directory', default=os.getcwd())
@@ -282,27 +311,20 @@ def main():
 
     with open(args.file, 'r', encoding='utf-8') as fp:
         definition = json.load(fp)
-    kp = kern_pairs(definition.get('kern', {}))
     bfr = build_font(definition['glyphs'], args.file.parent)
     if bfr is None:
-        sys.exit(1)
+        return 1
     font, height = bfr
 
     if args.samples:
-        for c in sorted(font.keys()):
-            name = unicodedata.name(chr(c), 'UNKNOWN')
-            print(f'code point U+{c:04X} {name}:')
-            dump_char(font[c], height)
-            print()
-
-    write_header_file(args.output_dir, definition['name'])
+        samples(font, height)
+    write_header_file(args.output_dir, definition)
     write_source_file(font,
-                      kp,
+                      kern_pairs(definition.get('kern', {})),
                       height,
                       args.output_dir,
-                      definition['name'],
-                      definition.get('spacing', 0))
-    sys.exit(0)
+                      definition)
+    return 0
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

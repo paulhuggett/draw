@@ -47,6 +47,7 @@
 
 namespace draw {
 
+struct font;
 class glyph_cache;
 
 class bitmap {
@@ -87,16 +88,21 @@ public:
   /// Renders an individual glyph.
   ///
   /// \param gc  The glyph cache
+  /// \param f  The font in which the character will be rendered
   /// \param code_point  The code point specifying the glyph to be drawn
   /// \param pos The position at which the glyph should be drawn
-  void draw_char(glyph_cache& gc, char32_t code_point, point pos);
-  point draw_string(glyph_cache& gc, std::u8string_view s, point pos);
+  void draw_char(glyph_cache& gc, font const& f, char32_t const code_point, point pos);
+  /// \param gc  The glyph cache
+  /// \param f  The font in which the character will be rendered
+  /// \param s  The UTF-8 encoded string to be drawn
+  /// \param pos The position for the first of the run of glyphs
+  point draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos);
   /// Returns the character width of the specified character.
   ///
-  /// \param gc  The glyph cache
+  /// \param f  A font instance
   /// \param code_point  The code point specifying the glyph to be drawn
   /// \returns The width of the specified glyph
-  std::uint16_t char_width(glyph_cache const& gc, char32_t code_point);
+  std::uint16_t char_width(font const& f, char32_t code_point);
 
   [[nodiscard]] constexpr std::uint16_t width() const noexcept { return width_; }
   [[nodiscard]] constexpr std::uint16_t height() const noexcept { return height_; }
@@ -150,7 +156,7 @@ extern pattern const white;
 extern pattern const gray;
 extern pattern const light_gray;
 
-ordinate string_width(glyph_cache& gc, std::u8string_view s);
+ordinate string_width(font const& f, std::u8string_view s);
 
 }  // end namespace draw
 

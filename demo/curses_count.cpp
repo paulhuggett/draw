@@ -112,7 +112,7 @@ int main() {
   constexpr auto frame_height = ordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  draw::glyph_cache gc32{sans32};
+  draw::glyph_cache gc;
 
   auto count = 0;
   auto swidth = 0;
@@ -131,8 +131,8 @@ int main() {
     auto const first = std::begin(str_buffer);
     auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
     std::u8string_view const str_view{first, last};
-    swidth = std::min(draw::string_width(gc32, str_view), ordinate{frame_width});
-    frame_buffer.draw_string(gc32, str_view, point{static_cast<ordinate>(frame_width - swidth), -1});
+    swidth = std::min(draw::string_width(sans32, str_view), ordinate{frame_width});
+    frame_buffer.draw_string(gc, sans32, str_view, point{static_cast<ordinate>(frame_width - swidth), -1});
 
     ++count;
 

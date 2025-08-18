@@ -89,14 +89,8 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
   for (; src_x < src_x_end; ++src_x, ++dest_x) {
     auto const src_bit = *src & (0x80_b >> (src_x % 8U));
     auto const dest_bit = 0x80_b >> (dest_x % 8U);
-
-    auto* const dest = dest_row + (dest_x / 8U);
-    auto out = (static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit);
-    switch (mode) {
-    case bitmap::transfer_mode::mode_or: *dest |= out; break;
-    case bitmap::transfer_mode::mode_copy: *dest = (*dest & ~dest_bit) | out; break;
-    default: assert(false && "unknown transfer mode"); break;
-    }
+    auto const v = static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit;
+    transfer(dest_row + (dest_x / 8U), dest_bit, v, mode);
   }
 }
 
@@ -379,24 +373,24 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   }
 }
 
-std::uint16_t bitmap::char_width(glyph_cache const& gc, char32_t code_point) {
-  font::glyph const* const g = gc.find_glyph(code_point);
+std::uint16_t bitmap::char_width(font const& f, char32_t code_point) {
+  font::glyph const* const g = f.find_glyph(code_point);
   assert(g != nullptr);
-  return gc.get_font()->width(*g);
+  return f.width(*g);
 }
 
-void bitmap::draw_char(glyph_cache& gc, char32_t code_point, point pos) {
+void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point, point pos) {
   if (pos.x > this->width() || pos.y > this->height()) {
     return;
   }
-  this->copy(gc.get(code_point), pos, transfer_mode::mode_or);
+  this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
 }
 
-static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::optional<char32_t> prev_code_point) {
+static ordinate glyph_spacing(font const& f, font::glyph const& g, std::optional<char32_t> prev_code_point) {
   if (!prev_code_point.has_value()) {
     return 0;
   }
-  ordinate space = gc.spacing();
+  ordinate space = f.spacing;
 
   auto const kerning_pairs = std::get<std::span<kerning_pair const>>(g);
   auto const kerning_pairs_end = std::end(kerning_pairs);
@@ -410,16 +404,16 @@ static ordinate glyph_spacing(glyph_cache& gc, font::glyph const& g, std::option
 }
 
 template <typename DrawFn>
-static ordinate scan_code_point(ordinate x, glyph_cache& gc, char32_t code_point,
-                                std::optional<char32_t> prev_code_point, DrawFn draw) {
-  font::glyph const* const g = gc.find_glyph(code_point);
-  x += glyph_spacing(gc, *g, prev_code_point);
+static ordinate scan_code_point(ordinate x, font const& f, char32_t code_point, std::optional<char32_t> prev_code_point,
+                                DrawFn draw) {
+  font::glyph const* const g = f.find_glyph(code_point);
+  x += glyph_spacing(f, *g, prev_code_point);
   draw(code_point, x);
-  x += gc.get_font()->width(*g);
+  x += f.width(*g);
   return x;
 }
 
-template <typename DrawFn> static ordinate scan_string(glyph_cache& gc, std::u8string_view s, DrawFn draw) {
+template <typename DrawFn> static ordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
   auto x = ordinate{0};
 
   std::optional<char32_t> prev_cp;
@@ -432,28 +426,28 @@ template <typename DrawFn> static ordinate scan_string(glyph_cache& gc, std::u8s
     if (auto const it = transcoder(cu, begin); it != begin) {
       // We have a code point.
       assert(std::distance(begin, it) == 1);
-      x = scan_code_point(x, gc, *begin, prev_cp, draw);
+      x = scan_code_point(x, f, *begin, prev_cp, draw);
       prev_cp = *begin;
     }
   }
   if (auto const it = transcoder.end_cp(begin); it != begin) {
     // We have a code point.
     assert(std::distance(begin, it) == 1);
-    x = scan_code_point(x, gc, *begin, prev_cp, draw);
+    x = scan_code_point(x, f, *begin, prev_cp, draw);
   }
 
   return x;
 }
 
-point bitmap::draw_string(glyph_cache& gc, std::u8string_view s, point pos) {
-  ordinate const new_x = scan_string(gc, s, [this, &gc, &pos](char32_t code_point, ordinate x) {
-    this->draw_char(gc, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
+point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos) {
+  ordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, ordinate x) {
+    this->draw_char(gc, f, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
   });
   return point{.x = static_cast<ordinate>(pos.x + new_x), .y = pos.y};
 }
 
-ordinate string_width(glyph_cache& gc, std::u8string_view s) {
-  return scan_string(gc, s, [](char32_t /*code_point*/, ordinate /*x*/) {});
+ordinate string_width(font const& f, std::u8string_view s) {
+  return scan_string(f, s, [](char32_t /*code_point*/, ordinate /*x*/) {});
 }
 
 }  // end namespace draw

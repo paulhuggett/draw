@@ -32,6 +32,7 @@
 #ifndef DRAW_GLYPH_CACHE_HPP
 #define DRAW_GLYPH_CACHE_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -46,35 +47,31 @@ class glyph_cache {
   static constexpr bool trace_unpack = false;
 
 public:
-  explicit constexpr glyph_cache(font const& f) noexcept : font_{&f} {
-    store_.resize(cache_.max_size() * glyph_cache::store_size(f));
+  constexpr glyph_cache() noexcept {
+    store_size_ = std::ranges::max(all_fonts | std::views::transform([](font const* const f) {
+                                     std::size_t const stride = (f->widest + 7U) / 8U;
+                                     std::size_t const pixel_height = f->height * 8U;
+                                     return stride * pixel_height;
+                                   }));
+    store_.resize(cache_.max_size() * store_size_);
   }
 
-  [[nodiscard]] bitmap const& get(char32_t code_point);
+  [[nodiscard]] bitmap const& get(font const& f, char32_t const code_point);
 
-  [[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
-  [[nodiscard]] constexpr font const* get_font() const noexcept { return font_; }
-  [[nodiscard]] constexpr std::uint8_t spacing() const noexcept { return font_->spacing; }
+  //[[nodiscard]] font::glyph const* find_glyph(char32_t code_point) const;
+  //[[nodiscard]] constexpr font const* get_font() const noexcept { return font_; }
+  //[[nodiscard]] constexpr std::uint8_t spacing() const noexcept { return font_->spacing; }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  [[nodiscard]] bitmap render(std::span<std::byte> bitmap_store, char32_t code_point);
+  [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store);
 
-  [[nodiscard]] static constexpr std::size_t store_size(font const& f) noexcept {
-    std::size_t const stride = (f.widest + 7U) / 8U;
-    std::size_t const pixel_height = f.height * 8U;
-    return stride * pixel_height;
-  }
-  font const* font_;
-  /// A bitmap that is large enough to contain the largest glyph in the font.
-#if 0
-  // TODO: don't allocate a vector every time. Separate the store.
-  struct entry {
-    std::vector<std::byte> store;
-    bitmap bm;
-  };
-#endif
+  //[[nodiscard]] static std::size_t store_size(font const& f) noexcept;
+
+  std::size_t store_size_;
+  /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::vector<std::byte> store_;
+  // TODO: the value could be just the offset into store_ of the data start.
   plru_cache<std::uint32_t, bitmap, 8, 2> cache_;
 };
 

@@ -45,6 +45,8 @@
 #include <new>
 #include <numeric>
 
+#include "draw/uinteger.hpp"
+
 namespace draw {
 
 namespace details {
@@ -89,18 +91,15 @@ private:
   std::bitset<Ways - 1U> bits_{};
 };
 
-template <typename MappedType, std::size_t IndexBits, std::size_t Ways>
-  requires(IndexBits < sizeof(std::size_t) * CHAR_BIT - 1)
-class cache_set {
+template <unsigned SetBits, typename Key, typename MappedType, std::size_t Ways> class cache_set {
 public:
   template <typename MissFn>
     requires(std::is_invocable_r_v<MappedType, MissFn>)
-  MappedType &access(std::size_t tag, MissFn miss) {
-    assert(tag < (~std::size_t{0} >> IndexBits));
-    auto const new_tag = tvs{true, tag};
+  MappedType &access(Key key, MissFn miss) {
+    auto const new_tag = tag_and_valid{key};
     // Linear search. The "Ways" argument should be small enough that tags_ fits within a cache line or two.
     for (auto ctr = std::size_t{0}; ctr < Ways; ++ctr) {
-      if (tags_[ctr] == new_tag) {
+      if (values_[ctr] == new_tag) {
         plru_.touch(ctr);
         return ways_[ctr].value();
       }
@@ -109,39 +108,37 @@ public:
     // Find the array member that is to be re-used by traversing the tree.
     std::size_t const victim = plru_.oldest();
     // If this slot is occupied, evict its contents
-    if (tags_[victim].valid()) {
+    if (values_[victim].valid()) {
       ways_[victim].value().~MappedType();
     }
 
     // The key was not found: call miss() to populate it.
     auto *const result = new (&ways_[victim].v[0]) MappedType{miss()};
-    tags_[victim] = new_tag;
+    values_[victim] = std::move(new_tag);
     plru_.touch(victim);
     return *result;
   }
 
   constexpr auto size() const noexcept {
-    return static_cast<std::size_t>(std::ranges::count_if(tags_, [](tvs const &v) { return v.valid(); }));
+    return static_cast<std::size_t>(std::ranges::count_if(values_, [](tag_and_valid const &v) { return v.valid(); }));
   }
 
 private:
-  struct tvs {
+  class tag_and_valid {
   public:
-    constexpr tvs() noexcept = default;
-    constexpr tvs(bool valid, std::size_t tag) noexcept : v_{static_cast<std::size_t>(valid) | (tag << 1)} {
-      assert(tag <= (~std::size_t{0} >> IndexBits));
-    }
-    friend constexpr bool operator==(tvs const &, tvs const &) noexcept = default;
-    constexpr bool valid() const noexcept { return static_cast<bool>(v_ & 1); }
-    constexpr std::size_t tag() const noexcept { return v_ >> 1; }
+    constexpr tag_and_valid() noexcept = default;
+    constexpr explicit tag_and_valid(Key key) noexcept : v_{1 | static_cast<decltype(v_)>(key >> (SetBits - 1))} {}
+    friend constexpr bool operator==(tag_and_valid const &, tag_and_valid const &) noexcept = default;
+    [[nodiscard]] constexpr auto valid() const noexcept { return static_cast<bool>(v_ & 1); }
 
   private:
-    std::size_t v_ = 0;
+    static constexpr auto KeyBits = sizeof(Key) * CHAR_BIT;
+    uinteger<KeyBits - SetBits + 1>::type v_ = 0;
   };
 
   std::array<aligned_storage<MappedType>, Ways> ways_;
-  std::array<tvs, Ways> tags_{};
-  details::tree<Ways> plru_{};
+  std::array<tag_and_valid, Ways> values_{};
+  tree<Ways> plru_{};
 };
 
 }  // end namespace details
@@ -157,12 +154,13 @@ private:
 /// \tparam Ways  The number of slots within a set that can hold a single entry. The number of
 ///   ways in a set determines how many entries with the same key fragment or bucket index can
 ///   coexist.
-template <typename Key, typename T, std::size_t Sets, std::size_t Ways>
-  requires(std::is_unsigned_v<Key> && std::popcount(Sets) == 1 && std::popcount(Ways) == 1)
+template <std::unsigned_integral Key, typename T, std::size_t Sets, std::size_t Ways>
+  requires(std::popcount(Sets) == 1 && std::popcount(Ways) == 1)
 class plru_cache {
 public:
   using key_type = Key;
   using mapped_type = T;
+
   static constexpr std::size_t const sets = Sets;
   static constexpr std::size_t const ways = Ways;
 
@@ -177,21 +175,26 @@ public:
   /// \returns The cached value.
   template <typename MissFn>
     requires(std::is_invocable_r_v<T, MissFn>)
-  mapped_type &access(Key const &key, MissFn miss) {
-    return sets_[key & (Sets - 1U)].access(key >> index_bits_, miss);
+  mapped_type &access(key_type key, MissFn miss) {
+    assert(plru_cache::set(key) < Sets);
+    return sets_[plru_cache::set(key)].access(key, miss);
   }
 
-  constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
-  constexpr std::size_t size() const noexcept {
+  [[nodiscard]] constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
+  [[nodiscard]] constexpr std::size_t size() const noexcept {
     return std::ranges::fold_left(sets_, std::size_t{0},
                                   [](std::size_t acc, auto const &set) { return acc + std::size(set); });
   }
 
+  [[nodiscard]] static constexpr std::size_t set(key_type key) noexcept { return key & (Sets - 1U); }
+  [[nodiscard]] static constexpr std::size_t way(key_type key) noexcept { return (key >> set_bits_) & (Ways - 1U); }
+
 private:
-  static constexpr std::size_t index_bits_ = std::bit_width(Sets - 1U);
-  std::array<details::cache_set<T, index_bits_, Ways>, Sets> sets_{};
+  static constexpr std::size_t set_bits_ = std::bit_width(Sets - 1U);
+  using ways_type = details::cache_set<set_bits_, key_type, mapped_type, ways>;
+  std::array<ways_type, Sets> sets_{};
 };
 
 }  // end namespace draw
 
-#endif  // PLRU_HPP
+#endif  // DRAW_PLRU_HPP
