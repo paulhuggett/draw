@@ -179,8 +179,9 @@ public:
     assert(plru_cache::set(key) < Sets);
     return sets_[plru_cache::set(key)].access(key, miss);
   }
-
+  /// \returns The maximum possible number of elements that can be held by the cache.
   [[nodiscard]] constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
+  /// \returns The number of elements held by the cache.
   [[nodiscard]] constexpr std::size_t size() const noexcept {
     return std::ranges::fold_left(sets_, std::size_t{0},
                                   [](std::size_t acc, auto const &set) { return acc + std::size(set); });
