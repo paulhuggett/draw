@@ -69,6 +69,9 @@ function (setup_target target)
     -Wno-exit-time-destructors
     -Wno-padded
     -Wno-weak-vtables
+
+    # TODO: just temporary
+    -Wno-global-constructors
   )
   set(gcc_options -Wall -Wextra -pedantic -Wno-maybe-uninitialized)
   set(msvc_options

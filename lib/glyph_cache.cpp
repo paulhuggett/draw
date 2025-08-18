@@ -45,8 +45,9 @@ bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
     assert(cache::way(key) < cache::ways);
     std::size_t const index = cache::set(key) * cache::ways + cache::way(key);
     std::size_t const size = this->store_size_;
-    auto const begin = std::begin(store_) + index * size;
-    auto const end = begin + size;
+    using difference_type = decltype(store_)::difference_type;
+    auto const begin = std::begin(store_) + static_cast<difference_type>(index * size);
+    auto const end = begin + static_cast<difference_type>(size);
     assert(end <= std::end(store_));
     return this->render(f, code_point, std::span{begin, end});
   });
