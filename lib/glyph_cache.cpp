@@ -34,7 +34,25 @@
 #include <cassert>
 #include <print>
 
+namespace {
+
+/// Enable to inspect the unpacking and rotation of the font data.
+constexpr bool trace_unpack = false;
+
+}  // end anonymous namespace
+
 namespace draw {
+
+glyph_cache::glyph_cache() noexcept
+    : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
+  store_.resize(cache_.max_size() * store_size_);
+}
+
+std::size_t glyph_cache::get_store_size(font const* const f) noexcept {
+  std::size_t const stride = (f->widest + 7U) / 8U;
+  std::size_t const pixel_height = f->height * 8U;
+  return stride * pixel_height;
+}
 
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
   auto const key = static_cast<std::uint32_t>(code_point);
@@ -54,12 +72,10 @@ bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
 }
 
 bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) {
-  auto height = static_cast<std::uint16_t>(f.height * 8);
-
-  font::glyph const* glyph = f.find_glyph(code_point);
+  auto const height = static_cast<std::uint16_t>(f.height * 8);
+  font::glyph const* const glyph = f.find_glyph(code_point);
 
   auto const& bitmaps = std::get<std::span<std::byte const>>(*glyph);
-  // auto const width = static_cast<std::uint16_t>(bitmaps.size() / f.height);
   auto const width = f.width(*glyph);
   bitmap bm{bitmap_store, width, height};
   for (auto y = std::size_t{0}; y < height; ++y) {

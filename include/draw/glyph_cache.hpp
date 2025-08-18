@@ -43,26 +43,14 @@
 namespace draw {
 
 class glyph_cache {
-  /// Enable to inspect the unpacking and rotation of the font data.
-  static constexpr bool trace_unpack = false;
-
 public:
-  constexpr glyph_cache() noexcept
-      : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
-    store_.resize(cache_.max_size() * store_size_);
-  }
-
+  glyph_cache() noexcept;
   [[nodiscard]] bitmap const& get(font const& f, char32_t const code_point);
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] bitmap render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store);
-
-  static std::size_t get_store_size(font const* const f) noexcept {
-    std::size_t const stride = (f->widest + 7U) / 8U;
-    std::size_t const pixel_height = f->height * 8U;
-    return stride * pixel_height;
-  }
+  [[nodiscard]] static std::size_t get_store_size(font const* const f) noexcept;
 
   std::size_t store_size_;
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
