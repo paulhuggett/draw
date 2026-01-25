@@ -33,6 +33,7 @@ add_executable(draw-unit-tests)
 target_sources(draw-unit-tests PRIVATE
   test_copy.cpp
   test_frame_rect.cpp
+  test_iumap.cpp
   test_line.cpp
   test_paint_rect.cpp
   test_plru_cache.cpp

@@ -36,6 +36,7 @@ include (CheckCXXCompilerFlag)
 
 option(DRAW_WERROR "Compiler warnings are errors" No)
 option(DRAW_UNIT_TESTS "Add unit tests" Yes)
+option(DRAW_HOSTED "Is this a hosted environment" No)
 
 find_package (Python3 COMPONENTS Interpreter)
 if (NOT Python3_Interpreter_FOUND)
@@ -102,6 +103,10 @@ function (setup_target target)
     list(APPEND msvc_options /WX)
   endif()
 
+  if (DRAW_HOSTED)
+    target_compile_definitions(${target} PRIVATE DRAW_HOSTED=1)
+  endif()
+
   target_compile_options(${target}
     PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
@@ -131,4 +136,6 @@ if (DRAW_UNIT_TESTS)
   add_subdirectory(unit_tests)
 endif(DRAW_UNIT_TESTS)
 
-add_subdirectory(demo)
+if (DRAW_HOSTED)
+  add_subdirectory(demo)
+endif()

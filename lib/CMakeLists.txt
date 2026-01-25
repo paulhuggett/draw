@@ -33,13 +33,14 @@ add_subdirectory(font)
 
 add_library(draw STATIC )
 target_sources(draw PRIVATE
-  "${DRAW_PROJECT_ROOT}/include/draw/font.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/bitmap.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/font.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
-  "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
-  "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/icubaby.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/types.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
 
   bitmap.cpp
   font.cpp

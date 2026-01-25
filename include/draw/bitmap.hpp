@@ -113,7 +113,9 @@ public:
   [[nodiscard]] constexpr std::span<std::byte const> store() const noexcept { return store_; }
   [[nodiscard]] constexpr std::span<std::byte> store() noexcept { return store_; }
 
+#if DRAW_HOSTED
   void dump(std::FILE* stream = stdout) const;
+#endif
 
 private:
   std::span<std::byte> store_;

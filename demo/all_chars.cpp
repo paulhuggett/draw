@@ -77,5 +77,7 @@ int main() {
     bm.draw_char(gc, sans16, key, pos);
     pos.x += width;
   }
+#if TRACE_SOURCE
   bm.dump();
+#endif
 }

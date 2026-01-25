@@ -33,7 +33,9 @@
 
 #include <cassert>
 #include <cstring>
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
 #include <print>
+#endif
 #include <utility>
 
 #include "draw/glyph_cache.hpp"
@@ -94,6 +96,7 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
   }
 }
 
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
 template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* const src_row);
 template <>
 [[maybe_unused]] void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
@@ -108,6 +111,13 @@ template <>
 template <> [[maybe_unused]] void trace_source<false>(unsigned, unsigned, std::byte const* const) {
   // Just do nothing.
 }
+template <typename... Args> void trace_print(char const* format, Args&&... args) {
+  std::print(format, std::forward<Args>(args)...);
+}
+#else
+template <typename... Args> void trace_print(char const*, Args&&...) {
+}
+#endif  // DRAW_HOSTED
 
 void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
                          std::byte* const dest_row, bitmap::transfer_mode mode) {
@@ -119,7 +129,9 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
   auto* dest = dest_row + (dest_x / 8U);
 
   constexpr bool trace = false;
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
   trace_source<trace>(src_x, src_x_end, src_row);
+#endif
 
   auto const m = dest_x % 8U;
   auto const mask_high = 0xFF_b << m;
@@ -129,7 +141,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
     // The initial partial byte.
     transfer(dest, mask_low, (*src & mask_high) >> m, mode);
     if constexpr (trace) {
-      std::print("{:08b}'", std::to_underlying(*dest));
+      trace_print("{:08b}'", std::to_underlying(*dest));
     }
 
     ++dest;
@@ -140,7 +152,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
     while (src_x + 8U <= src_x_end) {
       transfer(dest, std::byte{0xFF}, ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m), mode);
       if constexpr (trace) {
-        std::print("{:08b}'", std::to_underlying(*dest));
+        trace_print("{:08b}'", std::to_underlying(*dest));
       }
 
       ++dest;
@@ -168,7 +180,7 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
   }
 
   if constexpr (trace) {
-    std::println("{:08b}", std::to_underlying(*dest));
+    trace_print("{:08b}", std::to_underlying(*dest));
   }
 }
 
@@ -188,6 +200,7 @@ void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const sr
 
 namespace draw {
 
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
 void bitmap::dump(std::FILE* const stream) const {
   auto xb = 0U;  // The x ordinate (in bytes)
   for (auto const d : store_) {
@@ -201,6 +214,7 @@ void bitmap::dump(std::FILE* const stream) const {
   }
   std::println(stream, "{:{}}^", "", width_);
 }
+#endif  // DRAW_HOSTED
 
 void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
   // An initial gross clipping check.

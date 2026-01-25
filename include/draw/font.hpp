@@ -39,6 +39,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "draw/iumap.hpp"
+
 namespace draw {
 
 constexpr auto white_square = std::uint32_t{0x25A1};
@@ -84,10 +86,8 @@ struct font {
     return &pos->second;
   }
 
-  // TODO: replace this with iumap<>
-  // [https://github.com/paulhuggett/AM_MIDI2.0Lib/blob/main/include/midi2/adt/iumap.hpp]
-  // (or something like it).
-  std::unordered_map<std::uint32_t, glyph> glyphs;
+  // TODO: Use a perfect hash function.
+  iumap<std::uint32_t, glyph, 256> glyphs;
 };
 
 extern std::vector<font const*> all_fonts;
