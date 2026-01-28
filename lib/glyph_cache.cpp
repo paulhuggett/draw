@@ -32,12 +32,23 @@
 #include "draw/glyph_cache.hpp"
 
 #include <cassert>
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
 #include <print>
+#endif
 
 namespace {
 
 /// Enable to inspect the unpacking and rotation of the font data.
 constexpr bool trace_unpack = false;
+
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
+template <typename... Args> void trace_print(char const* format, Args&&... args) {
+  std::print(format, std::forward<Args>(args)...);
+}
+#else
+template <typename... Args> void trace_print(char const*, Args&&...) {
+}
+#endif  // DRAW_HOSTED
 
 }  // end anonymous namespace
 
@@ -79,7 +90,7 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
   bitmap bm{bitmap_store, width, height};
   for (auto y = std::size_t{0}; y < height; ++y) {
     if constexpr (trace_unpack) {
-      std::print("|");
+      trace_print("|");
     }
 
     auto x = 0U;
@@ -104,7 +115,7 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
             return (pixels & (std::byte{1} << bit)) != std::byte{0} ? 'X' : ' ';
           };
           for (auto ctr = 0U; ctr < 8U; ++ctr) {
-            std::print("{}", get_pixel(7 - ctr));
+            trace_print("{}", get_pixel(7 - ctr));
           }
         }
       }
@@ -116,11 +127,11 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
       auto const pixel = bitmaps[src_index] & (std::byte{1} << (y % 8U));
       bm.set(point{.x = static_cast<ordinate>(x), .y = static_cast<ordinate>(y)}, pixel != std::byte{0});
       if constexpr (trace_unpack) {
-        std::print("{}", pixel != std::byte{0} ? 'X' : ' ');
+        trace_print("{}", pixel != std::byte{0} ? 'X' : ' ');
       }
     }
     if constexpr (trace_unpack) {
-      std::println("|{0}", y == f.baseline ? "<-" : "");
+      trace_print("|{0}\n", y == f.baseline ? "<-" : "");
     }
   }
   return bm;
