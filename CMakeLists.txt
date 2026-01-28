@@ -32,7 +32,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(draw CXX)
 
-cmake_policy(SET CMP0140 NEW)
+if ((${CMAKE_MAJOR_VERSION} GREATER_EQUAL 3) AND (${CMAKE_MINOR_VERSION} >= 25))
+  cmake_policy(SET CMP0140 NEW)
+endif()
 
 include (CheckCXXCompilerFlag)
 
