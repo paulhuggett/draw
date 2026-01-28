@@ -63,7 +63,7 @@ def is_splitable(no_split:SplitList, x:int) -> tuple[SplitList, bool]:
 
 def read_png(file:pathlib.Path):
     reader = png.Reader(filename=file)
-    width, height, pixels, metadata = reader.asRGBA8()
+    width, height, pixels, metadata = reader.asRGBA()
     pixels = list(pixels)
     if metadata['bitdepth'] != 8:
         raise RuntimeError("File {file} does not have a bitdepth of 8")

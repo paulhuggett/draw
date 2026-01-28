@@ -29,12 +29,25 @@
 #
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
+include(FetchContent)
+FetchContent_Declare(
+  pypng
+  GIT_REPOSITORY https://gitlab.com/drj11/pypng.git
+  GIT_TAG        b2500eca7bafac80847f16125071c674123bc2dc # Update for release 0.20250521.0
+)
+FetchContent_MakeAvailable(pypng)
+FetchContent_GetProperties(pypng SOURCE_DIR DRAW_PYPNG_DIR)
+list(APPEND PYTHONPATH "${DRAW_PYPNG_DIR}/code")
+message(STATUS "Setting PYTHONPATH for font.py to '${PYTHONPATH}'")
+
 add_custom_command(
   COMMAND
     mkdir -p "${CMAKE_CURRENT_BINARY_DIR}/draw"
   COMMAND
+    "${CMAKE_COMMAND}" -E env "PYTHONPATH=${PYTHONPATH}"
     "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/16/sans16.json
   COMMAND
+    "${CMAKE_COMMAND}" -E env "PYTHONPATH=${PYTHONPATH}"
     "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/32/sans32.json
   OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.cpp"

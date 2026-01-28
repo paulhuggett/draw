@@ -32,6 +32,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(draw CXX)
 
+cmake_policy(SET CMP0140 NEW)
+
 include (CheckCXXCompilerFlag)
 
 option(DRAW_WERROR "Compiler warnings are errors" No)
