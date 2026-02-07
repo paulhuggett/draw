@@ -53,3 +53,16 @@ target_compile_options(draw-unit-tests
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
 )
+
+if(APPLE)
+  add_custom_command(
+    TARGET draw-unit-tests
+    POST_BUILD
+    COMMAND codesign --sign - --force --deep $<TARGET_FILE:draw-unit-tests>
+    COMMENT "Ad-hoc signing draw-unit-tests for macOS System Policy"
+  )
+endif()
+
+include(GoogleTest)
+gtest_discover_tests(draw-unit-tests)
+

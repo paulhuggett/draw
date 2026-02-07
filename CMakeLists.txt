@@ -38,7 +38,8 @@ if (CMAKE_MAJOR_VERSION GREATER_EQUAL 3 AND
   cmake_policy(SET CMP0140 NEW)
 endif()
 
-include (CheckCXXCompilerFlag)
+include(CTest)
+include(CheckCXXCompilerFlag)
 
 option(DRAW_WERROR "Compiler warnings are errors" No)
 option(DRAW_UNIT_TESTS "Add unit tests" Yes)
@@ -131,6 +132,8 @@ set(DRAW_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(lib)
 
 if (DRAW_UNIT_TESTS)
+  enable_testing()
+
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
   # on Windows.
   set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
