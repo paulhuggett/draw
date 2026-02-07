@@ -31,7 +31,7 @@
 #===----------------------------------------------------------------------===//
 add_custom_command(
   COMMAND
-    mkdir -p "${CMAKE_CURRENT_BINARY_DIR}/draw"
+    ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/draw"
   COMMAND
     "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/16/sans16.json
   COMMAND
