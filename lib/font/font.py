@@ -160,6 +160,8 @@ def dump_char(glyph:Union[Tuple[int, ...], int], height:int) -> None:
 
 def write_header_file(output_dir:pathlib.Path, definition:Dict[str, Any]) -> None:
     name:str = definition['name']
+    if name.find(os.sep) != -1:
+        raise RuntimeError(f'font name ("{name}") must not contain a path separator')
     with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as header:
         guard = 'DRAW_FONT_' + name.upper() + '_HPP'
         header.write(f'''{SIGNATURE}
