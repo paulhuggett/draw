@@ -1,5 +1,10 @@
-//===-- In-place Unordered Map ------------------------------------------------*- C++ -*-===//
-//
+//===- include/draw/iumap.hpp --=--------------------------*- mode: C++ -*-===//
+//*  _                              *
+//* (_)_   _ _ __ ___   __ _ _ __   *
+//* | | | | | '_ ` _ \ / _` | '_ \  *
+//* | | |_| | | | | | | (_| | |_) | *
+//* |_|\__,_|_| |_| |_|\__,_| .__/  *
+//*                         |_|     *
 //===----------------------------------------------------------------------===//
 // Copyright © 2025 Paul Bowen-Huggett
 //
@@ -205,12 +210,14 @@ public:
   using iterator = iterator_type<member>;
   using const_iterator = iterator_type<member const>;
 
-  constexpr iumap() noexcept = default;
-  constexpr iumap(std::initializer_list<value_type> init, Hash const& hash = Hash(),
-                  key_equal const& equal = key_equal()) {
+  constexpr iumap(hasher const& hash = Hash{}, key_equal const& equal = key_equal{}) : hash_{hash}, equal_{equal} {}
+  constexpr iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
+                  key_equal const& equal = key_equal{})
+      : iumap{hash, equal} {
     assert(init.size() <= Size && "Initializer list is too long");
     for (auto const& v : init) {
       this->insert(v);
+      assert(this->find(v.first)->first == v.first);
     }
   }
   iumap(iumap const& other) = default;
@@ -249,8 +256,8 @@ public:
   [[nodiscard]] const_iterator find(Key const& k) const;
 
   // Observers
-  [[nodiscard]] static constexpr hasher hash_function() { return Hash{}; }
-  [[nodiscard]] static constexpr key_equal key_eq() { return KeyEqual{}; }
+  [[nodiscard]] constexpr hasher hash_function() const { return hash_; }
+  [[nodiscard]] constexpr key_equal key_eq() const { return equal_; }
 
 #ifdef IUMAP_TRACE
   void dump(std::ostream& os) const {
@@ -293,12 +300,14 @@ private:
     enum state state = state::unused;
     alignas(value_type) std::byte storage[sizeof(value_type)]{};
   };
+  [[no_unique_address]] hasher hash_;
+  [[no_unique_address]] key_equal equal_;
   std::size_t size_ = 0;
   std::size_t tombstones_ = 0;
   std::array<member, Size> v_{};
 
-  template <typename Container> static constexpr auto* lookup_slot(Container& container, Key const& key);
-  template <typename Container> static constexpr auto* find_insert_slot(Container& container, Key const& key);
+  constexpr auto* lookup_slot(this auto& self, Key const& key);
+  constexpr auto* find_insert_slot(this auto& self, Key const& key);
 };
 
 // ctor
@@ -388,7 +397,7 @@ template <typename Key, typename Mapped, std::size_t Size, typename Hash, typena
 template <typename... Args>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&&... args)
     -> std::pair<iterator, bool> {
-  auto* const slot = iumap::find_insert_slot(*this, key);
+  auto* const slot = this->find_insert_slot(key);
   if (slot == nullptr) {
     // The map is full and the key was not found. Insertion failed.
     return std::make_pair(this->end(), false);
@@ -421,7 +430,7 @@ template <typename Key, typename Mapped, std::size_t Size, typename Hash, typena
 template <typename M>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, M&& value)
     -> std::pair<iterator, bool> {
-  auto* const slot = iumap::find_insert_slot(*this, key);
+  auto* const slot = this->find_insert_slot(key);
   if (slot == nullptr) {
     // The map is full and the key was not found. Insertion failed.
     return std::make_pair(this->end(), false);
@@ -445,7 +454,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const_iterator {
-  auto* const slot = iumap::lookup_slot(*this, k);
+  auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
     return this->end();  // Not found
   }
@@ -455,7 +464,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> iterator {
-  auto* const slot = iumap::lookup_slot(*this, k);
+  auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
     return this->end();  // Not found
   }
@@ -486,24 +495,22 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
 /// Tombstones are ignored.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
-template <typename Container>
-constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Container& container, Key const& key) {
-  using slot_type = std::remove_pointer_t<decltype(container.v_.data())>;
-  using slot_ptr = slot_type*;
+constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(this auto& self, Key const& key) {
+  using slot_type = std::remove_pointer_t<decltype(v_.data())>;
+  using slot_ptr =
+      std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, slot_type const*, slot_type*>;
 
-  auto const size = container.v_.size();
-  auto const equal = KeyEqual{};
-
-  auto pos = Hash{}(key) % size;
+  auto const size = self.v_.size();
+  auto pos = self.hash_(key) % size;
   for (auto iteration = 1U; iteration <= size; ++iteration) {
-    switch (slot_type* const slot = &container.v_[pos]; slot->state) {
+    switch (auto* const slot = &self.v_[pos]; slot->state) {
     case state::unused: return slot;
     case state::tombstone:
       // Keep searching.
       break;
     case state::occupied:
-      if (equal(slot->pointer()->first, key)) {
-        return slot;
+      if (self.equal_(slot->pointer()->first, key)) {
+        return slot_ptr{slot};
       }
       break;
     default: assert(false && "Slot is in an invalid state"); break;
@@ -518,16 +525,16 @@ constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Container&
 /// so that when inserted, the key's probing distance is as short as possible.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
-template <typename Container>
-constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Container& container, Key const& key) {
-  using slot_type = std::remove_pointer_t<decltype(container.v_.data())>;
-  auto const size = container.v_.size();
-  auto const equal = KeyEqual{};
+constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(this auto& self, Key const& key) {
+  using slot_type = std::remove_pointer_t<decltype(v_.data())>;
+  using slot_ptr =
+      std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, slot_type const*, slot_type*>;
+  auto const size = self.v_.size();
 
-  auto pos = Hash{}(key) % size;  // The probing position.
-  slot_type* first_tombstone = nullptr;
+  auto pos = self.hash_(key) % size;  // The probing position.
+  auto* first_tombstone = slot_ptr{nullptr};
   for (auto iteration = 1U; iteration <= size; ++iteration) {
-    switch (slot_type* const slot = &container.v_[pos]; slot->state) {
+    switch (slot_type* const slot = &self.v_[pos]; slot->state) {
     case state::tombstone:
       if (first_tombstone == nullptr) {
         // Remember this tombstone's slot so it can be returned later.
@@ -535,8 +542,8 @@ constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Conta
       }
       break;
     case state::occupied:
-      if (equal(slot->pointer()->first, key)) {
-        return slot;
+      if (self.equal_(slot->pointer()->first, key)) {
+        return slot_ptr{slot};
       }
       break;
     case state::unused: return first_tombstone != nullptr ? first_tombstone : slot;
@@ -545,7 +552,6 @@ constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Conta
     // The next quadratic probing location
     pos = (pos + iteration) % size;
   }
-  using slot_ptr = slot_type*;
   return first_tombstone != nullptr ? first_tombstone : slot_ptr{nullptr};
 }
 
