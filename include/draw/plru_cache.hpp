@@ -43,6 +43,7 @@
 #include <climits>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <new>
 #include <numeric>
 
@@ -52,16 +53,18 @@ namespace draw {
 
 namespace details {
 
-template <typename T> struct aligned_storage {
-  [[nodiscard]] constexpr T &value() noexcept { return *std::bit_cast<T *>(&v[0]); }
-  [[nodiscard]] constexpr T const &value() const noexcept { return *std::bit_cast<T const *>(&v[0]); }
-  alignas(T) std::byte v[sizeof(T)];
+template <typename T> class aligned_storage {
+public:
+  [[nodiscard]] constexpr T* data(this auto& self) noexcept { return std::bit_cast<T*>(&self.v[0]); }
+
+private:
+  alignas(T) std::byte v[sizeof(T)]{};
 };
 
 template <std::size_t Ways> class tree {
 public:
   /// Flip the access bits of the tree to indicate that \p way is the most recently used member.
-  void touch(std::size_t const way) noexcept {
+  constexpr void touch(std::size_t const way) noexcept {
     assert(way < Ways && "Way index is too large");
     auto node = std::size_t{0};
     auto start = std::size_t{0};
@@ -95,26 +98,28 @@ private:
 template <unsigned SetBits, typename Key, typename MappedType, std::size_t Ways> class cache_set {
 public:
   template <typename MissFn>
-    requires(std::is_invocable_r_v<MappedType, MissFn>)
-  MappedType &access(Key key, MissFn miss) {
+    requires(std::is_invocable_r_v<MappedType, MissFn, Key, std::size_t>)
+  MappedType& access(Key const key, std::size_t const index, MissFn const miss) {
     auto const new_tag = tag_and_valid{key};
     // Linear search. The "Ways" argument should be small enough that tags_ fits within a cache line or two.
     for (auto ctr = std::size_t{0}; ctr < Ways; ++ctr) {
       if (values_[ctr] == new_tag) {
         plru_.touch(ctr);
-        return ways_[ctr].value();
+        return *ways_[ctr].data();
       }
     }
 
     // Find the array member that is to be re-used by traversing the tree.
     std::size_t const victim = plru_.oldest();
+    assert(victim < values_.size());
+
     // If this slot is occupied, evict its contents
     if (values_[victim].valid()) {
-      ways_[victim].value().~MappedType();
+      std::destroy_at(ways_[victim].data());
     }
 
     // The key was not found: call miss() to populate it.
-    auto *const result = new (&ways_[victim].v[0]) MappedType{miss()};
+    auto* const result = new (ways_[victim].data()) MappedType{miss(key, index + victim)};
     values_[victim] = std::move(new_tag);
     plru_.touch(victim);
     return *result;
@@ -175,26 +180,25 @@ public:
   ///   is not present in the cache.
   /// \returns The cached value.
   template <typename MissFn>
-    requires(std::is_invocable_r_v<T, MissFn>)
-  mapped_type &access(key_type key, MissFn miss) {
-    assert(plru_cache::set(key) < Sets);
-    return sets_[plru_cache::set(key)].access(key, miss);
+    requires(std::is_invocable_r_v<mapped_type, MissFn, key_type, std::size_t>)
+  mapped_type& access(key_type key, MissFn miss) {
+    assert(plru_cache::set(key) < sets);
+    return sets_[plru_cache::set(key)].access(key, plru_cache::set(key) * plru_cache::ways, miss);
   }
   /// \returns The maximum possible number of elements that can be held by the cache.
-  [[nodiscard]] constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
+  [[nodiscard]] constexpr std::size_t max_size() const noexcept { return sets * ways; }
   /// \returns The number of elements held by the cache.
   [[nodiscard]] constexpr std::size_t size() const noexcept {
     return std::ranges::fold_left(sets_, std::size_t{0},
                                   [](std::size_t acc, auto const &set) { return acc + std::size(set); });
   }
 
-  [[nodiscard]] static constexpr std::size_t set(key_type key) noexcept { return key & (Sets - 1U); }
-  [[nodiscard]] static constexpr std::size_t way(key_type key) noexcept { return (key >> set_bits_) & (Ways - 1U); }
-
 private:
   static constexpr std::size_t set_bits_ = std::bit_width(Sets - 1U);
   using ways_type = details::cache_set<set_bits_, key_type, mapped_type, ways>;
-  std::array<ways_type, Sets> sets_{};
+  std::array<ways_type, sets> sets_{};
+
+  [[nodiscard]] static constexpr std::size_t set(key_type key) noexcept { return key & (sets - 1U); }
 };
 
 }  // end namespace draw

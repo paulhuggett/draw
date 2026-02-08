@@ -52,11 +52,12 @@ TEST(PlruCache, Empty) {
 }
 
 TEST(PlruCache, InitialAccess) {
+  using testing::_;
   plru_cache<unsigned, std::string, 4, 2> cache;
   std::string const value = "str";
-  MockFunction<std::string()> mock_function;
+  MockFunction<std::string(unsigned, std::size_t)> mock_function;
 
-  EXPECT_CALL(mock_function, Call()).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(_, _)).WillOnce(Return(value)).RetiresOnSaturation();
   {
     std::string const& actual1 = cache.access(3U, mock_function.AsStdFunction());
     EXPECT_EQ(actual1, value);
@@ -71,19 +72,18 @@ TEST(PlruCache, InitialAccess) {
 }
 
 TEST(PlruCache, Fill) {
+  using testing::_;
   plru_cache<unsigned, std::string, 4, 2> cache;
 
-  MockFunction<std::string()> mock_function;
-  EXPECT_CALL(mock_function, Call())
-      .WillOnce(Return("first"))
-      .WillOnce(Return("second"))
-      .WillOnce(Return("third"))
-      .WillOnce(Return("fourth"))
-      .WillOnce(Return("fifth"))
-      .WillOnce(Return("sixth"))
-      .WillOnce(Return("seventh"))
-      .WillOnce(Return("eighth"))
-      .RetiresOnSaturation();
+  MockFunction<std::string(unsigned, std::size_t)> mock_function;
+  EXPECT_CALL(mock_function, Call(1, _)).WillOnce(Return("first"));
+  EXPECT_CALL(mock_function, Call(2, _)).WillOnce(Return("second"));
+  EXPECT_CALL(mock_function, Call(3, _)).WillOnce(Return("third"));
+  EXPECT_CALL(mock_function, Call(4, _)).WillOnce(Return("fourth"));
+  EXPECT_CALL(mock_function, Call(5, _)).WillOnce(Return("fifth"));
+  EXPECT_CALL(mock_function, Call(6, _)).WillOnce(Return("sixth"));
+  EXPECT_CALL(mock_function, Call(7, _)).WillOnce(Return("seventh"));
+  EXPECT_CALL(mock_function, Call(8, _)).WillOnce(Return("eighth"));
 
   std::string const& first = cache.access(1, mock_function.AsStdFunction());
   EXPECT_EQ(first, "first");
@@ -143,8 +143,7 @@ TEST(PlruCache, OverFill) {
   plru_cache<unsigned, counted, 4, 2> cache;
   using tup = decltype(counted::actions)::value_type;
 
-  auto miss = []() { return counted{}; };
-
+  auto miss = [](unsigned, std::size_t) { return counted{}; };
   cache.access(1, miss);
   cache.access(2, miss);
   cache.access(3, miss);

@@ -58,26 +58,14 @@ glyph_cache::glyph_cache() noexcept {
   store_.resize(cache_.max_size() * store_size_);
 }
 
-std::size_t glyph_cache::get_store_size(font const* const f) noexcept {
-  std::size_t const stride = (f->widest + 7U) / 8U;
-  std::size_t const pixel_height = f->height * 8U;
-  return stride * pixel_height;
-}
-
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
-  auto const key = static_cast<std::uint32_t>(code_point);
-  return cache_.access(key, [this, &f, key, code_point]() {
+  return cache_.access(code_point, [this, &f](char32_t const key, std::size_t const index) {
     // Called when a glyph was not found in the cache.
-    using cache = decltype(cache_);
-    assert(cache::set(key) < cache::sets);
-    assert(cache::way(key) < cache::ways);
-    std::size_t const index = cache::set(key) * cache::ways + cache::way(key);
-    std::size_t const size = this->store_size_;
     using difference_type = decltype(store_)::difference_type;
-    auto const begin = std::begin(store_) + static_cast<difference_type>(index * size);
-    auto const end = begin + static_cast<difference_type>(size);
+    auto const begin = std::begin(store_) + static_cast<difference_type>(index * store_size_);
+    auto const end = begin + static_cast<difference_type>(store_size_);
     assert(end <= std::end(store_));
-    return this->render(f, code_point, std::span{begin, end});
+    return this->render(f, key, std::span{begin, end});
   });
 }
 
@@ -125,7 +113,7 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
       auto const src_index = (x * f.height) + (y / 8U);
       assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
       auto const pixel = bitmaps[src_index] & (std::byte{1} << (y % 8U));
-      bm.set(point{.x = static_cast<ordinate>(x), .y = static_cast<ordinate>(y)}, pixel != std::byte{0});
+      bm.set(point{.x = static_cast<coordinate>(x), .y = static_cast<coordinate>(y)}, pixel != std::byte{0});
       if constexpr (trace_unpack) {
         trace_print("{}", pixel != std::byte{0} ? 'X' : ' ');
       }
