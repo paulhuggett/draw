@@ -223,16 +223,16 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
     return;
   }
 
-  auto dest_y = static_cast<unsigned>(std::max(dest_pos.y, ordinate{0}));
+  auto dest_y = static_cast<unsigned>(std::max(dest_pos.y, coordinate{0}));
   auto const src_y_init = dest_pos.y < 0 ? static_cast<unsigned>(-dest_pos.y) : 0U;
   auto const src_y_end = std::min(static_cast<unsigned>(source.height_), src_y_init + height_ - dest_y);
 
   auto const src_x_init = dest_pos.x >= 0 ? 0U : static_cast<unsigned>(-dest_pos.x);
-  assert(width_ - std::max(dest_pos.x, ordinate{0}) >= 0);
+  assert(width_ - std::max(dest_pos.x, coordinate{0}) >= 0);
   auto const src_x_end = std::min(static_cast<unsigned>(source.width_),
-                                  src_x_init + static_cast<unsigned>(width_ - std::max(dest_pos.x, ordinate{0})));
+                                  src_x_init + static_cast<unsigned>(width_ - std::max(dest_pos.x, coordinate{0})));
 
-  auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, ordinate{0}));
+  auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, coordinate{0}));
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
     copy_row(src_x_init, src_x_end, &source.store_[src_y * source.stride_], dest_x, &store_[dest_y * stride_], mode);
   }
@@ -305,22 +305,22 @@ void bitmap::line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1) 
 void bitmap::line(point p0, point p1) {
   if (p0.y == p1.y) {
     if (p0.y >= 0 && p0.y < height_) {
-      this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, ordinate{0})),
-                            static_cast<std::uint16_t>(std::max(p1.x, ordinate{0})), static_cast<std::uint16_t>(p0.y),
+      this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, coordinate{0})),
+                            static_cast<std::uint16_t>(std::max(p1.x, coordinate{0})), static_cast<std::uint16_t>(p0.y),
                             0xFF_b);
     }
     return;
   }
   if (p0.x == p1.x) {
     if (p0.x >= 0 && p0.x < width_) {
-      this->line_vertical(static_cast<std::uint16_t>(p0.x), static_cast<std::uint16_t>(std::max(p0.y, ordinate{0})),
-                          static_cast<std::uint16_t>(std::max(p1.y, ordinate{0})));
+      this->line_vertical(static_cast<std::uint16_t>(p0.x), static_cast<std::uint16_t>(std::max(p0.y, coordinate{0})),
+                          static_cast<std::uint16_t>(std::max(p1.y, coordinate{0})));
     }
     return;
   }
 
-  auto const sx = p0.x < p1.x ? ordinate{1} : ordinate{-1};
-  auto const sy = p0.y < p1.y ? ordinate{1} : ordinate{-1};
+  auto const sx = p0.x < p1.x ? coordinate{1} : coordinate{-1};
+  auto const sy = p0.y < p1.y ? coordinate{1} : coordinate{-1};
   auto const dx = std::abs(static_cast<int>(p1.x) - static_cast<int>(p0.x));
   auto const dy = -std::abs(static_cast<int>(p1.y) - static_cast<int>(p0.y));
   auto err = dx + dy;
@@ -378,9 +378,9 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   if (r.top >= 0 && static_cast<unsigned>(r.top) >= height_) {
     return;
   }
-  auto const x0 = static_cast<std::uint16_t>(std::max(r.left, ordinate{0}));
-  auto const x1 = static_cast<std::uint16_t>(std::max(r.right, ordinate{0}));
-  auto const y0 = static_cast<std::uint16_t>(std::max(r.top, ordinate{0}));
+  auto const x0 = static_cast<std::uint16_t>(std::max(r.left, coordinate{0}));
+  auto const x1 = static_cast<std::uint16_t>(std::max(r.right, coordinate{0}));
+  auto const y0 = static_cast<std::uint16_t>(std::max(r.top, coordinate{0}));
   auto const y1 = std::min(static_cast<std::uint16_t>(r.bottom), static_cast<std::uint16_t>(height_ - 1U));
   for (auto y = y0; y <= y1; ++y) {
     this->line_horizontal(x0, x1, y, pat.data[y % 8]);
@@ -400,11 +400,11 @@ void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point
   this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
 }
 
-static ordinate glyph_spacing(font const& f, font::glyph const& g, std::optional<char32_t> prev_code_point) {
+static coordinate glyph_spacing(font const& f, font::glyph const& g, std::optional<char32_t> prev_code_point) {
   if (!prev_code_point.has_value()) {
     return 0;
   }
-  ordinate space = f.spacing;
+  coordinate space = f.spacing;
 
   auto const kerning_pairs = std::get<std::span<kerning_pair const>>(g);
   auto const kerning_pairs_end = std::end(kerning_pairs);
@@ -418,8 +418,8 @@ static ordinate glyph_spacing(font const& f, font::glyph const& g, std::optional
 }
 
 template <typename DrawFn>
-static ordinate scan_code_point(ordinate x, font const& f, char32_t code_point, std::optional<char32_t> prev_code_point,
-                                DrawFn draw) {
+static coordinate scan_code_point(coordinate x, font const& f, char32_t code_point,
+                                  std::optional<char32_t> prev_code_point, DrawFn draw) {
   font::glyph const* const g = f.find_glyph(code_point);
   x += glyph_spacing(f, *g, prev_code_point);
   draw(code_point, x);
@@ -427,8 +427,8 @@ static ordinate scan_code_point(ordinate x, font const& f, char32_t code_point, 
   return x;
 }
 
-template <typename DrawFn> static ordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
-  auto x = ordinate{0};
+template <typename DrawFn> static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
+  auto x = coordinate{0};
 
   std::optional<char32_t> prev_cp;
 
@@ -454,14 +454,14 @@ template <typename DrawFn> static ordinate scan_string(font const& f, std::u8str
 }
 
 point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos) {
-  ordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, ordinate x) {
-    this->draw_char(gc, f, code_point, point{.x = static_cast<ordinate>(pos.x + x), .y = pos.y});
+  coordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, coordinate x) {
+    this->draw_char(gc, f, code_point, point{.x = static_cast<coordinate>(pos.x + x), .y = pos.y});
   });
-  return point{.x = static_cast<ordinate>(pos.x + new_x), .y = pos.y};
+  return point{.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
 }
 
-ordinate string_width(font const& f, std::u8string_view s) {
-  return scan_string(f, s, [](char32_t /*code_point*/, ordinate /*x*/) {});
+coordinate string_width(font const& f, std::u8string_view s) {
+  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) {});
 }
 
 }  // end namespace draw

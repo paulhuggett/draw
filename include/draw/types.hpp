@@ -48,23 +48,23 @@ consteval std::byte operator""_b(unsigned long long arg) noexcept {
 
 }  // end namespace literals
 
-using ordinate = std::int16_t;
+using coordinate = std::int16_t;
 
 struct point {
-  ordinate x = 0;
-  ordinate y = 0;
+  coordinate x = 0;
+  coordinate y = 0;
 };
 
 struct rect {
-  ordinate top = 0;
-  ordinate left = 0;
-  ordinate bottom = 0;
-  ordinate right = 0;
+  coordinate top = 0;
+  coordinate left = 0;
+  coordinate bottom = 0;
+  coordinate right = 0;
 
   constexpr bool operator==(rect const &) const noexcept = default;
 
-  [[nodiscard]] constexpr ordinate width() const noexcept { return right > left ? right - left : 0; }
-  [[nodiscard]] constexpr ordinate height() const noexcept { return bottom > top ? bottom - top : 0; }
+  [[nodiscard]] constexpr coordinate width() const noexcept { return right > left ? right - left : 0; }
+  [[nodiscard]] constexpr coordinate height() const noexcept { return bottom > top ? bottom - top : 0; }
   [[nodiscard]] constexpr bool empty() const noexcept { return bottom <= top || right <= left; }
 
   /// Shrinks or expands the rectangle.
@@ -75,7 +75,7 @@ struct rect {
   /// \param dx  The distance by which the left position is incremented and the right decremented
   /// \param dy  The distance by which the top position is incremented and the bottom decremented
   /// \returns  The new rectangle
-  [[nodiscard]] constexpr rect inset(ordinate dx, ordinate dy) const noexcept {
+  [[nodiscard]] constexpr rect inset(coordinate dx, coordinate dy) const noexcept {
     auto t = top + dy;
     auto l = left + dx;
     auto b = bottom - dy;
@@ -84,10 +84,10 @@ struct rect {
       t = l = b = r = 0;
     }
     return {
-        .top = static_cast<ordinate>(t),
-        .left = static_cast<ordinate>(l),
-        .bottom = static_cast<ordinate>(b),
-        .right = static_cast<ordinate>(r),
+        .top = static_cast<coordinate>(t),
+        .left = static_cast<coordinate>(l),
+        .bottom = static_cast<coordinate>(b),
+        .right = static_cast<coordinate>(r),
     };
   }
 };

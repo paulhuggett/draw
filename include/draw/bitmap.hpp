@@ -45,6 +45,10 @@
 
 #include "types.hpp"
 
+#ifndef DRAW_HOSTED
+#define DRAW_HOSTED (0)
+#endif
+
 namespace draw {
 
 struct font;
@@ -58,19 +62,19 @@ public:
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height, std::uint16_t stride) noexcept
       : store_{store}, width_{width}, height_{height}, stride_{stride} {
     assert(store.size() >= this->actual_store_size() && "store is too small");
-    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "width is too great");
-    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "height is too great");
+    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
+    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
   }
   constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height) noexcept
       : bitmap(store, width, height, required_stride(width)) {}
 
   static constexpr std::uint16_t required_stride(std::uint16_t width) noexcept {
-    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "width is too great");
+    assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
     return (width + 7U) / 8U;
   }
   /// Returns the store size required for a bitmap with the supplied dimensions.
   static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
-    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<ordinate>::max()) && "height is too great");
+    assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
     return required_stride(width) * height;
   }
 
@@ -108,7 +112,8 @@ public:
   [[nodiscard]] constexpr std::uint16_t height() const noexcept { return height_; }
   [[nodiscard]] constexpr std::uint16_t stride() const noexcept { return stride_; }
   [[nodiscard]] constexpr rect bounds() const noexcept {
-    return {.top = 0, .left = 0, .bottom = static_cast<ordinate>(height()), .right = static_cast<ordinate>(width())};
+    return {
+        .top = 0, .left = 0, .bottom = static_cast<coordinate>(height()), .right = static_cast<coordinate>(width())};
   }
   [[nodiscard]] constexpr std::span<std::byte const> store() const noexcept { return store_; }
   [[nodiscard]] constexpr std::span<std::byte> store() noexcept { return store_; }
@@ -158,7 +163,7 @@ extern pattern const white;
 extern pattern const gray;
 extern pattern const light_gray;
 
-ordinate string_width(font const& f, std::u8string_view s);
+coordinate string_width(font const& f, std::u8string_view s);
 
 }  // end namespace draw
 

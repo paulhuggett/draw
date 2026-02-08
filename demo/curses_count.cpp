@@ -52,8 +52,8 @@
 using namespace std::string_view_literals;
 using namespace draw::literals;
 using draw::bitmap;
+using draw::coordinate;
 using draw::gray;
-using draw::ordinate;
 using draw::point;
 using draw::rect;
 
@@ -67,7 +67,7 @@ void themometer(bitmap& bmp, rect const& r, float pcnt) {
 
   // A gray fill for the body of the thermometer.
   auto fill = r.inset(1, 1);
-  fill.right = r.left + static_cast<ordinate>(std::round(r.width() * pcnt));
+  fill.right = r.left + static_cast<coordinate>(std::round(r.width() * pcnt));
   bmp.paint_rect(fill, draw::gray);
   // A solid line to denote the end of the filled region.
   bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
@@ -108,8 +108,8 @@ int main() {
   noecho();
   halfdelay(5);
 
-  constexpr auto frame_width = ordinate{128};
-  constexpr auto frame_height = ordinate{32};
+  constexpr auto frame_width = coordinate{128};
+  constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
   draw::glyph_cache gc;
@@ -119,7 +119,7 @@ int main() {
   do {
     // Erase the previous glyphs.
     frame_buffer.paint_rect(rect{.top = 0,
-                                 .left = static_cast<ordinate>(frame_width - swidth),
+                                 .left = static_cast<coordinate>(frame_width - swidth),
                                  .bottom = frame_height - 1U,
                                  .right = frame_width - 1U},
                             draw::white);
@@ -131,8 +131,8 @@ int main() {
     auto const first = std::begin(str_buffer);
     auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
     std::u8string_view const str_view{first, last};
-    swidth = std::min(draw::string_width(sans32, str_view), ordinate{frame_width});
-    frame_buffer.draw_string(gc, sans32, str_view, point{static_cast<ordinate>(frame_width - swidth), -1});
+    swidth = std::min(draw::string_width(sans32, str_view), coordinate{frame_width});
+    frame_buffer.draw_string(gc, sans32, str_view, point{static_cast<coordinate>(frame_width - swidth), -1});
 
     ++count;
 
