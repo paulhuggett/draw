@@ -201,6 +201,8 @@ def write_source_file(font:FontDict,
     id = int(definition['id'])
     name:str = definition['name']
     spacing = int(definition['spacing'])
+    if name.find(os.sep) != -1:
+        raise RuntimeError(f'font name ("{name}") must not contain a path separator')
     with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
         source.write(SIGNATURE)
         source.write(f'#include "{name}.hpp"\n')
