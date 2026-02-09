@@ -95,7 +95,7 @@ public:
   /// \param f  The font in which the character will be rendered
   /// \param code_point  The code point specifying the glyph to be drawn
   /// \param pos The position at which the glyph should be drawn
-  void draw_char(glyph_cache& gc, font const& f, char32_t const code_point, point pos);
+  void draw_char(glyph_cache& gc, font const& f, char32_t code_point, point pos);
   /// \param gc  The glyph cache
   /// \param f  The font in which the character will be rendered
   /// \param s  The UTF-8 encoded string to be drawn
@@ -129,7 +129,7 @@ private:
   std::uint16_t stride_ = 0;  ///< Number of bytes per row
 
   constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
-  void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte const pattern);
+  void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte pattern);
   void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);
 };
 

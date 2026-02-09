@@ -232,7 +232,7 @@ void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
   auto const src_x_end = std::min(static_cast<unsigned>(source.width_),
                                   src_x_init + static_cast<unsigned>(width_ - std::max(dest_pos.x, coordinate{0})));
 
-  auto dest_x = static_cast<unsigned>(std::max(dest_pos.x, coordinate{0}));
+  auto const dest_x = static_cast<unsigned>(std::max(dest_pos.x, coordinate{0}));
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
     copy_row(src_x_init, src_x_end, &source.store_[src_y * source.stride_], dest_x, &store_[dest_y * stride_], mode);
   }
@@ -327,7 +327,7 @@ void bitmap::line(point p0, point p1) {
 
   for (;;) {
     this->set(point{.x = p0.x, .y = p0.y}, true);
-    auto e2 = err * 2;
+    auto const e2 = err * 2;
     if (e2 >= dy) {
       if (p0.x == p1.x) {
         break;

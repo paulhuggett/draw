@@ -57,7 +57,7 @@ std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_framed_bitmap_and_
   return std::make_tuple(std::move(store), std::move(bmp));
 }
 
-std::array const empty{
+constexpr std::array empty{
     0b00000000_b,  // [0]
     0b00000000_b,  // [1]
     0b00000000_b,  // [2]

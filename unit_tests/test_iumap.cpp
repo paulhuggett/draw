@@ -145,7 +145,7 @@ TEST(IUMap, Erase) {
 TEST(IUMap, FindFound) {
   draw::iumap<int, std::string, 8> h;
   h.insert(std::make_pair(10, "ten"s));
-  auto pos = h.find(10);
+  auto const pos = h.find(10);
   ASSERT_NE(pos, h.end());
   EXPECT_EQ(pos->first, 10);
   EXPECT_EQ(pos->second, "ten"s);
@@ -154,7 +154,7 @@ TEST(IUMap, FindFound) {
 TEST(IUMap, FindNotFound) {
   draw::iumap<int, std::string, 8> h;
   h.insert(std::make_pair(10, "ten"s));
-  auto pos = h.find(11);
+  auto const pos = h.find(11);
   EXPECT_EQ(pos, h.end());
 }
 
@@ -283,7 +283,7 @@ private:
 TEST(IUMap, MoveOnlyCtor) {
   draw::iumap<int, move_only, 4> a;
   a.try_emplace(3, 43);
-  auto pa5 = a.try_emplace(5, 47).first;
+  auto const pa5 = a.try_emplace(5, 47).first;
   a.try_emplace(7, 53);
   a.erase(pa5);  // an erase so that the container holds a tombstone record
 
@@ -300,7 +300,7 @@ TEST(IUMap, MoveOnlyAssign) {
   draw::iumap<int, move_only, 4> b;
 
   a.try_emplace(3, 43);
-  auto pa5 = a.try_emplace(5, 47).first;
+  auto const pa5 = a.try_emplace(5, 47).first;
   a.try_emplace(7, 53);
   a.erase(pa5);  // an erase so that the container holds a tombstone record
 
