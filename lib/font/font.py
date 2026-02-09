@@ -185,7 +185,7 @@ def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
 
 
 def write_bitmap_data(source:typing.TextIO, k:int, data:Tuple[int, ...]) -> None:
-    source.write(f'std::array const bitmap_{k:04x} = {{')
+    source.write(f'constexpr std::array bitmap_{k:04x} = {{')
     separator = ''
     for value in data:
         source.write(f'{separator}{value:#04x}_b')
@@ -218,7 +218,7 @@ namespace {
 ''')
         widest = 0
         baseline = 32 - 8
-        source.write('std::array<kerning_pair, 0> const empty_kern;\n')
+        source.write('constexpr std::array<kerning_pair, 0> empty_kern;\n')
         for k, v in font.items():
             if k in kd:
                 write_kerning_pairs(source, k, kd[k])
@@ -234,7 +234,7 @@ draw::font const {name} {{
   .widest={widest},
   .height={height},
   .spacing={spacing},
-  .glyphs={{
+  .glyphs=draw::font::glyph_map{{
 ''')
         for k, v in font.items():
             kname = unicodedata.name(chr(k), '')
