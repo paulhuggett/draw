@@ -41,9 +41,18 @@ endif()
 include(CTest)
 include(CheckCXXCompilerFlag)
 
-option(DRAW_WERROR "Compiler warnings are errors" No)
-option(DRAW_UNIT_TESTS "Add unit tests" Yes)
-option(DRAW_HOSTED "Is this a hosted environment" No)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
+    CMAKE_SYSTEM_NAME STREQUAL "Windows" OR
+    CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
+    CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  set(default_hosted Yes)
+elseif ()
+  set(default_hosted No)
+endif ()
+
+option(DRAW_WERROR "Compiler warnings are errors?" No)
+option(DRAW_UNIT_TESTS "Add unit tests?" Yes)
+option(DRAW_HOSTED "Is this a hosted environment?" ${default_hosted})
 
 find_package (Python3 COMPONENTS Interpreter)
 if (NOT Python3_Interpreter_FOUND)
@@ -133,7 +142,6 @@ add_subdirectory(lib)
 
 if (DRAW_UNIT_TESTS)
   enable_testing()
-
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
   # on Windows.
   set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")
@@ -141,7 +149,6 @@ if (DRAW_UNIT_TESTS)
   set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
   set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
   add_subdirectory(googletest)
-
   add_subdirectory(unit_tests)
 endif(DRAW_UNIT_TESTS)
 
