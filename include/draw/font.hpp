@@ -73,7 +73,7 @@ struct font {
   }
 
   glyph const* find_glyph(char32_t code_point) const {
-    auto pos = glyphs.find(static_cast<std::uint32_t>(code_point));
+    auto pos = glyphs.find(code_point);
     auto end = glyphs.end();
     if (pos == end) {
       pos = glyphs.find(white_square);
@@ -87,7 +87,8 @@ struct font {
   }
 
   // TODO: Use a perfect hash function.
-  iumap<std::uint32_t, glyph, 256> glyphs;
+  using glyph_map = iumap<std::uint32_t, glyph, 256>;
+  glyph_map glyphs;
 };
 
 extern std::vector<font const*> all_fonts;
