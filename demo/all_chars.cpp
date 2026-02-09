@@ -36,8 +36,8 @@
 #include "draw/types.hpp"
 
 using draw::bitmap;
+using draw::coordinate;
 using draw::font;
-using draw::ordinate;
 using draw::point;
 
 namespace {
@@ -57,8 +57,8 @@ std::vector<char32_t> sorted_code_points(font const& f) {
 }  // end anonymous namespace
 
 int main() {
-  constexpr auto frame_width = ordinate{128};
-  constexpr auto frame_height = ordinate{32};
+  constexpr auto frame_width = coordinate{128};
+  constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap bm{frame_store, frame_width, frame_height};
   draw::glyph_cache gc;

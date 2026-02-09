@@ -43,16 +43,16 @@
 using namespace std::literals;
 using namespace draw::literals;
 using draw::bitmap;
+using draw::coordinate;
 using draw::gray;
-using draw::ordinate;
 using draw::point;
 using draw::rect;
 
 int main() {
   using namespace std::chrono_literals;
 
-  constexpr auto frame_width = ordinate{128};
-  constexpr auto frame_height = ordinate{32};
+  constexpr auto frame_width = coordinate{128};
+  constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
   draw::glyph_cache gc;
