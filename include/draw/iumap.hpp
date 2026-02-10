@@ -210,9 +210,10 @@ public:
   using iterator = iterator_type<member>;
   using const_iterator = iterator_type<member const>;
 
-  constexpr iumap(hasher const& hash = Hash{}, key_equal const& equal = key_equal{}) : hash_{hash}, equal_{equal} {}
-  constexpr iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
-                  key_equal const& equal = key_equal{})
+  constexpr explicit iumap(hasher const& hash = Hash{}, key_equal const& equal = key_equal{})
+      : hash_{hash}, equal_{equal} {}
+  constexpr explicit iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
+                           key_equal const& equal = key_equal{})
       : iumap{hash, equal} {
     assert(init.size() <= Size && "Initializer list is too long");
     for (auto const& v : init) {
