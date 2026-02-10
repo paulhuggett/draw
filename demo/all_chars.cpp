@@ -40,6 +40,10 @@ using draw::coordinate;
 using draw::font;
 using draw::point;
 
+#if TRACE_SOURCE
+#define TRACE_SOURCE (0)
+#endif
+
 namespace {
 
 std::vector<char32_t> sorted_code_points(font const& f) {
