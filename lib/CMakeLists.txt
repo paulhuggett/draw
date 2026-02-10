@@ -43,7 +43,6 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
 
   bitmap.cpp
-  font.cpp
   glyph_cache.cpp
 )
 target_include_directories(draw

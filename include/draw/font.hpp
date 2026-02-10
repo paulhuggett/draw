@@ -40,6 +40,8 @@
 #include <unordered_map>
 
 #include "draw/iumap.hpp"
+#include "draw/sans16.hpp"
+#include "draw/sans32.hpp"
 
 namespace draw {
 
@@ -90,7 +92,7 @@ struct font {
   glyph_map glyphs;
 };
 
-extern std::array<font const*, 2> all_fonts;
+constexpr std::array all_fonts{std::cref(sans16), std::cref(sans32)};
 
 }  // end namespace draw
 
