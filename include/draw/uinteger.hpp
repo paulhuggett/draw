@@ -32,7 +32,6 @@
 #ifndef DRAW_UINTEGER_HPP
 #define DRAW_UINTEGER_HPP
 
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
