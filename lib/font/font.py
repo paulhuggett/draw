@@ -179,7 +179,7 @@ def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
     source.write(f'std::array const kern_{k:04x} = {{')
     separator = ''
     for prev_cp, distance in kdv:
-        source.write(f'{separator}kerning_pair{{.preceeding={prev_cp},.distance={distance}}}')
+        source.write(f'{separator}kerning_pair{{.preceding={prev_cp},.distance={distance}}}')
         separator = ','
     source.write('};\n')
 

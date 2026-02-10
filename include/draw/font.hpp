@@ -46,8 +46,8 @@ namespace draw {
 constexpr auto white_square = std::uint32_t{0x25A1};
 
 struct kerning_pair {
-  /// Code point of the preceeding glyph
-  std::uint32_t preceeding : 21 = 0;
+  /// Code point of the preceding glyph
+  std::uint32_t preceding : 21 = 0;
   std::uint32_t pad : 3 = 0;
   std::uint32_t distance : 8 = 0;
 };

@@ -196,6 +196,24 @@ void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const sr
   }
 }
 
+draw::coordinate glyph_spacing(draw::font const& f, draw::font::glyph const& g,
+                               std::optional<char32_t> prev_code_point) {
+  if (!prev_code_point.has_value()) {
+    return 0;
+  }
+  draw::coordinate space = f.spacing;
+
+  auto const kerning_pairs = std::get<std::span<draw::kerning_pair const>>(g);
+  auto const kerning_pairs_end = std::end(kerning_pairs);
+  if (auto const kern_pos =
+          std::find_if(std::begin(kerning_pairs), kerning_pairs_end,
+                       [&prev_code_point](draw::kerning_pair const& kp) { return kp.preceding == prev_code_point; });
+      kern_pos != kerning_pairs_end) {
+    space -= kern_pos->distance;
+  }
+  return space;
+}
+
 }  // namespace
 
 namespace draw {
@@ -398,23 +416,6 @@ void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point
     return;
   }
   this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
-}
-
-static coordinate glyph_spacing(font const& f, font::glyph const& g, std::optional<char32_t> prev_code_point) {
-  if (!prev_code_point.has_value()) {
-    return 0;
-  }
-  coordinate space = f.spacing;
-
-  auto const kerning_pairs = std::get<std::span<kerning_pair const>>(g);
-  auto const kerning_pairs_end = std::end(kerning_pairs);
-  if (auto const kern_pos =
-          std::find_if(std::begin(kerning_pairs), kerning_pairs_end,
-                       [&prev_code_point](kerning_pair const& kp) { return kp.preceeding == prev_code_point; });
-      kern_pos != kerning_pairs_end) {
-    space -= kern_pos->distance;
-  }
-  return space;
 }
 
 template <typename DrawFn>
