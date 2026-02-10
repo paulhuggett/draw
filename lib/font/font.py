@@ -247,15 +247,6 @@ draw::font const {name} {{
             source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {kname}\n')
         source.write('  }\n};\n')
 
-        source.write(f'''
-namespace {{
-struct ctor {{
-  ctor() {{ draw::all_fonts.push_back(&{name}); }}
-}};
-ctor c;
-}}
-''')
-
 
 def str_to_cp(s) -> int:
     if not isinstance(s, str):

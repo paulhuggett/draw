@@ -32,12 +32,12 @@
 #ifndef DRAW_FONT_HPP
 #define DRAW_FONT_HPP
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <tuple>
 #include <unordered_map>
-#include <vector>
 
 #include "draw/iumap.hpp"
 
@@ -90,7 +90,7 @@ struct font {
   glyph_map glyphs;
 };
 
-extern std::vector<font const*> all_fonts;
+extern std::array<font const*, 2> all_fonts;
 
 }  // end namespace draw
 

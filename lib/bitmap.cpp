@@ -218,7 +218,7 @@ draw::coordinate glyph_spacing(draw::font const& f, draw::font::glyph const& g,
 template <typename DrawFn>
 draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t code_point,
                                  std::optional<char32_t> prev_code_point, DrawFn draw) {
-  font::glyph const* const g = f.find_glyph(code_point);
+  draw::font::glyph const* const g = f.find_glyph(code_point);
   x += glyph_spacing(f, *g, prev_code_point);
   draw(code_point, x);
   x += f.width(*g);
