@@ -46,9 +46,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
     CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
     CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   set(default_hosted Yes)
-elseif ()
+else()
   set(default_hosted No)
-endif ()
+endif()
 
 option(DRAW_WERROR "Compiler warnings are errors?" No)
 option(DRAW_UNIT_TESTS "Add unit tests?" Yes)
