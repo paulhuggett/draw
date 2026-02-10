@@ -32,6 +32,7 @@
 #include "draw/bitmap.hpp"
 
 #include <cassert>
+#include <cstddef>
 #include <cstring>
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
 #include <print>
@@ -212,6 +213,16 @@ draw::coordinate glyph_spacing(draw::font const& f, draw::font::glyph const& g,
     space -= kern_pos->distance;
   }
   return space;
+}
+
+template <typename DrawFn>
+draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t code_point,
+                                 std::optional<char32_t> prev_code_point, DrawFn draw) {
+  font::glyph const* const g = f.find_glyph(code_point);
+  x += glyph_spacing(f, *g, prev_code_point);
+  draw(code_point, x);
+  x += f.width(*g);
+  return x;
 }
 
 }  // namespace
@@ -416,16 +427,6 @@ void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point
     return;
   }
   this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
-}
-
-template <typename DrawFn>
-static coordinate scan_code_point(coordinate x, font const& f, char32_t code_point,
-                                  std::optional<char32_t> prev_code_point, DrawFn draw) {
-  font::glyph const* const g = f.find_glyph(code_point);
-  x += glyph_spacing(f, *g, prev_code_point);
-  draw(code_point, x);
-  x += f.width(*g);
-  return x;
 }
 
 template <typename DrawFn> static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
