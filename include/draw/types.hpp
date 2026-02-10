@@ -61,7 +61,7 @@ struct rect {
   coordinate bottom = 0;
   coordinate right = 0;
 
-  constexpr bool operator==(rect const &) const noexcept = default;
+  constexpr bool operator==(rect const&) const noexcept = default;
 
   [[nodiscard]] constexpr coordinate width() const noexcept { return right > left ? right - left : 0; }
   [[nodiscard]] constexpr coordinate height() const noexcept { return bottom > top ? bottom - top : 0; }

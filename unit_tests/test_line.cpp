@@ -101,7 +101,8 @@ TEST(Line, OverLongHorizontal) {
 }
 
 TEST(Line, OverLongHorizontalLastRow) {
-  // Similar to the OverLongHorizontal test in that the x-ordinate of the line end is too large. This checks that we do not write beyond the end of the bitmap storage vector.
+  // Similar to the OverLongHorizontal test in that the x-ordinate of the line end is too large. This checks that we do
+  // not write beyond the end of the bitmap storage vector.
   auto [store, bmp] = draw::create_bitmap_and_store(16, 4);
   bmp.line(draw::point{0, 3}, draw::point{21, 3});
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
@@ -199,4 +200,4 @@ TEST(Line, Diagonal2) {
                                        ));
 }
 
-} // end anonymous namespace
+}  // end anonymous namespace

@@ -59,7 +59,9 @@ int main() {
 
   std::array<char8_t, 8> time_str;
   auto const first = time_str.begin();
-  auto const last = std::format_to_n(first, time_str.size(), "{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(std::chrono::system_clock::now())).out;
+  auto const last = std::format_to_n(first, time_str.size(), "{:%H:%M:%S}",
+                                     std::chrono::round<std::chrono::seconds>(std::chrono::system_clock::now()))
+                        .out;
   frame_buffer.draw_string(gc, sans32, std::u8string_view{first, last}, point{.x = 0, .y = 0});
   frame_buffer.dump();
 }
