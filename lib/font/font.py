@@ -48,7 +48,7 @@ SplitList = List[Tuple[int, int]]                  #type SplitList = list[tuple[
 
 def is_splitable(no_split:SplitList, x:int) -> Tuple[SplitList, bool]:
     """
-    Check if the column at x is splittable based on the no_split list.
+    Check if the column at x is splitable based on the no_split list.
     The no_split list contains pairs of (start, end) indices that should not be split.
     """
     splitable = True
