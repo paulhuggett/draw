@@ -58,7 +58,7 @@ namespace draw {
 ///
 /// \param n An integer value to check whether it is a power of two.
 /// \returns True if the input value is a power of 2.
-[[nodiscard]] constexpr bool is_power_of_two(std::unsigned_integral auto const n) noexcept {
+[[nodiscard]] constexpr auto is_power_of_two(std::unsigned_integral auto const n) noexcept -> bool {
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
   return std::has_single_bit(n);
 #else
@@ -212,8 +212,8 @@ public:
 
   constexpr explicit iumap(hasher const& hash = Hash{}, key_equal const& equal = key_equal{})
       : hash_{hash}, equal_{equal} {}
-  constexpr explicit iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
-                           key_equal const& equal = key_equal{})
+  constexpr iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
+                  key_equal const& equal = key_equal{})
       : iumap{hash, equal} {
     assert(init.size() <= Size && "Initializer list is too long");
     for (auto const& v : init) {
