@@ -54,9 +54,11 @@ option(DRAW_WERROR "Compiler warnings are errors?" No)
 option(DRAW_UNIT_TESTS "Add unit tests?" Yes)
 option(DRAW_HOSTED "Is this a hosted environment?" ${default_hosted})
 
-find_package (Python3 COMPONENTS Interpreter)
-if (NOT Python3_Interpreter_FOUND)
-  message(FATAL_ERROR "Python3 interpreter not found") 
+if (NOT Python_EXECUTABLE)
+  find_package (Python3 COMPONENTS Interpreter)
+  if (NOT Python3_Interpreter_FOUND)
+    message(FATAL_ERROR "Python3 interpreter not found")
+  endif()
 endif()
 
 # If the compiler accepts the command-line flag given by the
