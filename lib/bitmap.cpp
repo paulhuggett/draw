@@ -97,7 +97,7 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
 }
 
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
-template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* const src_row);
+template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* src_row);
 template <>
 [[maybe_unused]] void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
   for (auto x = src_x; x < src_x_end; ++x) {
