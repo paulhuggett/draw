@@ -67,15 +67,14 @@ struct font {
 
   using glyph = std::tuple<std::span<kerning_pair const>, std::span<std::byte const>>;
 
-  constexpr std::uint16_t width(glyph const& g) const noexcept {
+  [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
     auto const& bitmap = std::get<std::span<std::byte const>>(g);
     return static_cast<std::uint16_t>(bitmap.size() / this->height);
   }
 
-  glyph const* find_glyph(char32_t code_point) const {
+  [[nodiscard]] constexpr glyph const* find_glyph(char32_t code_point) const {
     auto pos = glyphs.find(code_point);
-    auto end = glyphs.end();
-    if (pos == end) {
+    if (auto const end = glyphs.end(); pos == end) {
       pos = glyphs.find(white_square);
       if (pos == end) {
         // We've got no definition for the requested code point and no definition for U+25A1 (WHITE SQUARE). Last resort
