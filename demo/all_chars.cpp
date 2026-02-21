@@ -40,7 +40,7 @@ using draw::coordinate;
 using draw::font;
 using draw::point;
 
-#if TRACE_SOURCE
+#ifndef TRACE_SOURCE
 #define TRACE_SOURCE (0)
 #endif
 
