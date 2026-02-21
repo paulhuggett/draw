@@ -53,7 +53,7 @@ void memor(std::byte* dest, std::byte const* src, std::size_t len) {
   }
 }
 
-void transfer(std::byte* const dest, std::byte mask, std::byte v, bitmap::transfer_mode mode) {
+void transfer(std::byte* const dest, std::byte const mask, std::byte const v, bitmap::transfer_mode const mode) {
   using enum bitmap::transfer_mode;
   switch (mode) {
   case mode_or: *dest |= v; break;
@@ -100,7 +100,8 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
 template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* src_row);
 template <>
-[[maybe_unused]] void trace_source<true>(unsigned src_x, unsigned src_x_end, std::byte const* const src_row) {
+[[maybe_unused]] void trace_source<true>(unsigned const src_x, unsigned const src_x_end,
+                                         std::byte const* const src_row) {
   for (auto x = src_x; x < src_x_end; ++x) {
     if (x % 8 == 0) {
       std::print("'");
@@ -121,7 +122,7 @@ template <typename... Args> void trace_print(char const*, Args&&...) {
 #endif  // DRAW_HOSTED
 
 void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
-                         std::byte* const dest_row, bitmap::transfer_mode mode) {
+                         std::byte* const dest_row, bitmap::transfer_mode const mode) {
   using enum bitmap::transfer_mode;
   assert(src_x % 8U != dest_x % 8U);
   assert(src_x + 8 <= src_x_end);
