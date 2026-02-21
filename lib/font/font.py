@@ -227,7 +227,7 @@ namespace {
                 widest = max(widest, len(v) // height)
                 write_bitmap_data(source, k, v)
 
-        source.write(f'''}} // end ananymous namespace
+        source.write(f'''}} // end anonymous namespace
 draw::font const {name} {{
   .id={id},
   .baseline={baseline},
@@ -270,12 +270,12 @@ def uniqued(iterable, key=None):
 JsonKernList = Dict[str, List[Tuple[str, int]]]  #type JsonKernList = dict[str, list[tuple[str, int]]]
 
 def kern_pairs(kl:JsonKernList) -> KernDict:
-    '''The kern list is a series of tuples which represent the previous code point, the current code
+    """The kern list is a series of tuples which represent the previous code point, the current code
     point, and the distance by which the spacing between the glyphs should be reduced. The two code
     points can be specified as either integers or strings of length 1.
 
     Returns a dictionary whose keys are the current code points and whose values are a list of
-    tuples for the previous code point and distance.'''
+    tuples for the previous code point and distance."""
 
     kernd:KernDict = {}
     for k,v in kl.items():
