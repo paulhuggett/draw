@@ -118,7 +118,7 @@ public:
   [[nodiscard]] constexpr std::span<std::byte const> store() const noexcept { return store_; }
   [[nodiscard]] constexpr std::span<std::byte> store() noexcept { return store_; }
 
-#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
   void dump(std::FILE* stream = stdout) const;
 #endif
 
