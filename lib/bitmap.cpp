@@ -35,8 +35,10 @@
 #include <cstddef>
 #include <cstring>
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 #include <print>
-#endif
+#endif  // __cpp_lib_print
+#endif  // DRAW_HOSTED
 #include <utility>
 
 #include "draw/glyph_cache.hpp"
@@ -97,7 +99,7 @@ void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const sr
   }
 }
 
-#if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 template <bool Trace> void trace_source(unsigned src_x, unsigned src_x_end, std::byte const* src_row);
 template <>
 [[maybe_unused]] void trace_source<true>(unsigned const src_x, unsigned const src_x_end,
@@ -119,7 +121,7 @@ template <typename... Args> void trace_print(char const* format, Args&&... args)
 #else
 template <typename... Args> void trace_print(char const*, Args&&...) {
 }
-#endif  // DRAW_HOSTED
+#endif  // DRAW_HOSTED && __cpp_lib_print
 
 void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
                          std::byte* const dest_row, bitmap::transfer_mode const mode) {
@@ -230,7 +232,7 @@ draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32
 
 namespace draw {
 
-#if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 void bitmap::dump(std::FILE* const stream) const {
   auto xb = 0U;  // The x ordinate (in bytes)
   for (auto const d : store_) {
@@ -244,7 +246,7 @@ void bitmap::dump(std::FILE* const stream) const {
   }
   std::println(stream, "{:{}}^", "", width_);
 }
-#endif  // DRAW_HOSTED
+#endif  // DRAW_HOSTED && __cpp_lib_print
 
 void bitmap::copy(bitmap const& source, point dest_pos, transfer_mode mode) {
   // An initial gross clipping check.
