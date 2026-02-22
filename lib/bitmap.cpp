@@ -65,8 +65,8 @@ void transfer(std::byte* const dest, std::byte const mask, std::byte const v, bi
   }
 }
 
-void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
-                      std::byte* const dest_row, bitmap::transfer_mode mode) {
+void copy_row_aligned(unsigned src_x, unsigned const src_x_end, std::byte const* const src_row, unsigned const dest_x,
+                      std::byte* const dest_row, bitmap::transfer_mode const mode) {
   using enum bitmap::transfer_mode;
   assert(src_x % 8U == dest_x % 8U);
 
@@ -86,8 +86,8 @@ void copy_row_aligned(unsigned src_x, unsigned src_x_end, std::byte const* const
   }
 }
 
-void copy_row_tiny(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
-                   std::byte* const dest_row, bitmap::transfer_mode mode) {
+void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* const src_row, unsigned dest_x,
+                   std::byte* const dest_row, bitmap::transfer_mode const mode) {
   assert(src_x % 8U != dest_x % 8U);
   // There's less than a byte to copy.
   // TODO: don't do this one pixel at a time.
@@ -124,7 +124,7 @@ template <typename... Args> void trace_print(char const*, Args&&...) {
 }
 #endif  // DRAW_HOSTED && __cpp_lib_print
 
-void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
+void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte const* const src_row, unsigned dest_x,
                          std::byte* const dest_row, bitmap::transfer_mode const mode) {
   using enum bitmap::transfer_mode;
   assert(src_x % 8U != dest_x % 8U);
@@ -189,8 +189,8 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
   }
 }
 
-void copy_row(unsigned src_x_init, unsigned src_x_end, std::byte const* const src_row, unsigned dest_x,
-              std::byte* const dest_row, bitmap::transfer_mode mode) {
+void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte const* const src_row,
+              unsigned const dest_x, std::byte* const dest_row, bitmap::transfer_mode const mode) {
   assert(src_x_init <= src_x_end);
   if (src_x_init % 8U == dest_x % 8U) {
     copy_row_aligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
@@ -221,10 +221,10 @@ draw::coordinate glyph_spacing(draw::font const& f, draw::font::glyph const& g,
 
 template <typename DrawFn>
 draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t code_point,
-                                 std::optional<char32_t> prev_code_point, DrawFn draw) {
+                                 std::optional<char32_t> prev_code_point, DrawFn&& draw) {
   draw::font::glyph const* const g = f.find_glyph(code_point);
   x += glyph_spacing(f, *g, prev_code_point);
-  draw(code_point, x);
+  std::invoke(std::forward<DrawFn>(draw), code_point, x);
   x += f.width(*g);
   return x;
 }
