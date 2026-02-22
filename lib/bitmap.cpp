@@ -33,6 +33,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
 #if defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
@@ -232,8 +233,9 @@ draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32
 
 namespace draw {
 
-#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
 void bitmap::dump(std::FILE* const stream) const {
+#if defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
   auto xb = 0U;  // The x ordinate (in bytes)
   for (auto const d : store_) {
     std::print(stream, "{:08b}", std::to_underlying(d));
@@ -244,7 +246,23 @@ void bitmap::dump(std::FILE* const stream) const {
       xb = 0;
     }
   }
-  std::println(stream, "{:{}}^", "", width_);
+#else
+  auto xb = 0U;  // The x ordinate (in bytes)
+  for (auto const d : store_) {
+    auto d2 = std::to_underlying(d);
+    for (auto ctr = 0U; ctr < 8U; ++ctr) {
+      std::putc((d2 & 0b10000000) != 0 1 ? '1' : '0');
+      d2 <<= 1;
+    }
+
+    ++xb;
+    if (xb >= stride_) {
+      // The end of a scan-line.
+      std::putc('\n', stream);
+      xb = 0;
+    }
+  }
+#endif  // __cpp_lib_print
 }
 #endif  // DRAW_HOSTED && __cpp_lib_print
 

@@ -54,7 +54,8 @@ template <typename... Args> void trace_print(char const*, Args&&...) {
 
 namespace draw {
 
-glyph_cache::glyph_cache() noexcept {
+glyph_cache::glyph_cache() noexcept
+    : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
   store_.resize(cache_.max_size() * store_size_);
 }
 

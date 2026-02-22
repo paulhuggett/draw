@@ -55,15 +55,12 @@ private:
     std::size_t const pixel_height = f.height * 8U;
     return stride * pixel_height;
   }
-  static std::size_t const store_size_;
+  std::size_t const store_size_;
 
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::vector<std::byte> store_;
   plru_cache<char32_t, bitmap, 8, 2> cache_;
 };
-
-inline std::size_t const glyph_cache::store_size_ =
-    std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size));
 
 }  // end namespace draw
 
