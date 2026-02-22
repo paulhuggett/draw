@@ -239,12 +239,12 @@ draw::font const {name} {{
         for k, v in font.items():
             kname = unicodedata.name(chr(k), '')
             if len(kname) > 0:
-                kname = "// " + kname
+                kname = " // " + kname
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
             kp_name = f'kern_{k:04x}' if k in kd else 'empty_kern'
-            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }}, {kname}\n')
+            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }},{kname}\n')
         source.write('  }\n};\n')
 
 
