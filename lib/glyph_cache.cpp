@@ -47,6 +47,7 @@ template <typename... Args> void trace_print(char const* format, Args&&... args)
 }
 #else
 template <typename... Args> void trace_print(char const*, Args&&...) {
+  // tracing is disabled.
 }
 #endif  // DRAW_HOSTED && __cpp_lib_print
 
