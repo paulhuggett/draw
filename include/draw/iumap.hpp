@@ -44,6 +44,7 @@
 #include <cstdint>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -307,8 +308,22 @@ private:
   std::size_t tombstones_ = 0;
   std::array<member, Size> v_{};
 
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
   constexpr auto* lookup_slot(this auto& self, Key const& key);
   constexpr auto* find_insert_slot(this auto& self, Key const& key);
+#else
+  constexpr member* lookup_slot(Key const& key) {
+    auto const* const self = this;
+    return const_cast<member*>(self->lookup_slot(key));
+  }
+  constexpr member const* lookup_slot(Key const& key) const;
+
+  constexpr member* find_insert_slot(Key const& key) {
+    auto const* const self = this;
+    return const_cast<member*>(self->find_insert_slot(key));
+  }
+  constexpr member const* find_insert_slot(Key const& key) const;
+#endif
 };
 
 // ctor
@@ -319,7 +334,7 @@ iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member const& other) no
     std::is_nothrow_copy_constructible_v<value_type>)
     : state{other.state} {
   if (state == state::occupied) {
-    new (this->pointer()) value_type(*other.pointer());
+    std::construct_at(this->pointer(), *other.pointer());
   }
 }
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
@@ -328,7 +343,7 @@ iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member&& other) noexcep
     std::is_nothrow_move_constructible_v<value_type>)
     : state{other.state} {
   if (state == state::occupied) {
-    new (this->pointer()) value_type(std::move(*other.pointer()));
+    std::construct_at(this->pointer(), std::move(*other.pointer()));
   }
 }
 
@@ -345,7 +360,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member const& o
     this->destroy();
   }
   if (other.state == state::occupied) {
-    new (this->pointer()) value_type(other.reference());
+    std::construct_at(this->pointer(), other.reference());
   }
   state = other.state;
   return *this;
@@ -362,7 +377,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member&& other)
     this->destroy();
   }
   if (other.state == state::occupied) {
-    new (pointer()) value_type(std::move(other.reference()));
+    std::construct_at(this->pointer(), std::move(other.reference()));
   }
   state = other.state;
   return *this;
@@ -374,7 +389,7 @@ template <typename Key, typename Mapped, std::size_t Size, typename Hash, typena
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
 void iumap<Key, Mapped, Size, Hash, KeyEqual>::member::destroy() noexcept {
   if (state == state::occupied) {
-    pointer()->~value_type();
+    std::destroy_at(this->pointer());
   }
   state = state::unused;
 }
@@ -496,7 +511,12 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
 /// Tombstones are ignored.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(this auto& self, Key const& key) {
+#else
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Key const& key) const -> member const* {
+  auto const& self = *this;
+#endif  // __cpp_explicit_this_parameter
   using slot_type = std::remove_pointer_t<decltype(v_.data())>;
   using slot_ptr =
       std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, slot_type const*, slot_type*>;
@@ -526,7 +546,12 @@ constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(this auto&
 /// so that when inserted, the key's probing distance is as short as possible.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(this auto& self, Key const& key) {
+#else
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Key const& key) const -> member const* {
+  auto const& self = *this;
+#endif  // __cpp_explicit_this_parameter
   using slot_type = std::remove_pointer_t<decltype(v_.data())>;
   using slot_ptr =
       std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, slot_type const*, slot_type*>;
