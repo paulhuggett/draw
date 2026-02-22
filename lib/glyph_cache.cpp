@@ -32,23 +32,23 @@
 #include "draw/glyph_cache.hpp"
 
 #include <cassert>
-#if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 #include <print>
-#endif
+#endif  // DRAW_HOSTED && __cpp_lib_print
 
 namespace {
 
 /// Enable to inspect the unpacking and rotation of the font data.
 constexpr bool trace_unpack = false;
 
-#if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 template <typename... Args> void trace_print(char const* format, Args&&... args) {
   std::print(format, std::forward<Args>(args)...);
 }
 #else
 template <typename... Args> void trace_print(char const*, Args&&...) {
 }
-#endif  // DRAW_HOSTED
+#endif  // DRAW_HOSTED && __cpp_lib_print
 
 }  // end anonymous namespace
 
