@@ -254,8 +254,8 @@ public:
   iterator erase(iterator pos);
 
   // Lookup
-  [[nodiscard]] iterator find(Key const& k);
-  [[nodiscard]] const_iterator find(Key const& k) const;
+  [[nodiscard]] constexpr iterator find(Key const& k);
+  [[nodiscard]] constexpr const_iterator find(Key const& k) const;
 
   // Observers
   [[nodiscard]] constexpr hasher hash_function() const { return hash_; }
@@ -469,7 +469,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, 
 // ~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const_iterator {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const_iterator {
   auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
     return this->end();  // Not found
@@ -479,7 +479,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const
 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> iterator {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> iterator {
   auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
     return this->end();  // Not found
