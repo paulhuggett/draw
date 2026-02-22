@@ -1,63 +1,46 @@
-//===- unit_tests/test_plru_cache.cpp -------------------------------------===//
-//*        _                             _           *
-//*  _ __ | |_ __ _   _    ___ __ _  ___| |__   ___  *
-//* | '_ \| | '__| | | |  / __/ _` |/ __| '_ \ / _ \ *
-//* | |_) | | |  | |_| | | (_| (_| | (__| | | |  __/ *
-//* | .__/|_|_|   \__,_|  \___\__,_|\___|_| |_|\___| *
-//* |_|                                              *
-//===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+//===-- plru_cache ------------------------------------------------------------*- C++ -*-===//
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// “Software”), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
+// midi2 library under the MIT license.
+// See https://github.com/paulhuggett/AM_MIDI2.0Lib/blob/main/LICENSE for license information.
 // SPDX-License-Identifier: MIT
-//===----------------------------------------------------------------------===//
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+//
+//===------------------------------------------------------------------------------------===//
+#include "draw/plru_cache.hpp"
 
+// Standard Library
 #include <tuple>
 #include <vector>
 
-#include "draw/plru_cache.hpp"
+// Google Test/Mock
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#if defined(MIDI2_FUZZTEST) && MIDI2_FUZZTEST
+#include <fuzztest/fuzztest.h>
+#endif
 
 using draw::plru_cache;
 
+using testing::_;
 using testing::ElementsAre;
 using testing::MockFunction;
 using testing::Return;
+using testing::UnorderedElementsAre;
 
 namespace {
 
 TEST(PlruCache, Empty) {
-  plru_cache<unsigned, int, 4, 2> cache;
+  plru_cache<unsigned, int, 4, 2> const cache;
   EXPECT_EQ(cache.max_size(), 4 * 2);
   EXPECT_EQ(cache.size(), 0);
 }
 
 TEST(PlruCache, InitialAccess) {
-  using testing::_;
   plru_cache<unsigned, std::string, 4, 2> cache;
   std::string const value = "str";
   MockFunction<std::string(unsigned, std::size_t)> mock_function;
 
-  EXPECT_CALL(mock_function, Call(_, _)).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(3U, _)).WillOnce(Return(value)).RetiresOnSaturation();
   {
     std::string const& actual1 = cache.access(3U, mock_function.AsStdFunction());
     EXPECT_EQ(actual1, value);
@@ -71,8 +54,23 @@ TEST(PlruCache, InitialAccess) {
   }
 }
 
+TEST(PlruCache, Dirty) {
+  plru_cache<unsigned, std::string, 4, 2> cache;
+  MockFunction<std::string(unsigned, std::size_t)> miss;
+  MockFunction<bool(std::string const&)> valid;
+
+  EXPECT_CALL(miss, Call(3U, _)).WillOnce(Return("first")).WillOnce(Return("second")).RetiresOnSaturation();
+  EXPECT_CALL(valid, Call("first")).WillOnce(Return(true)).WillOnce(Return(false)).RetiresOnSaturation();
+
+  // Key is not in the cache: miss() is called
+  EXPECT_EQ(cache.access(3U, miss.AsStdFunction(), valid.AsStdFunction()), "first");
+  // Key is in the cache: valid() called and returns true
+  EXPECT_EQ(cache.access(3U, miss.AsStdFunction(), valid.AsStdFunction()), "first");
+  // Key is in the cache: valid() called and returns false so miss() is called a second time
+  EXPECT_EQ(cache.access(3U, miss.AsStdFunction(), valid.AsStdFunction()), "second");
+}
+
 TEST(PlruCache, Fill) {
-  using testing::_;
   plru_cache<unsigned, std::string, 4, 2> cache;
 
   MockFunction<std::string(unsigned, std::size_t)> mock_function;
@@ -83,7 +81,7 @@ TEST(PlruCache, Fill) {
   EXPECT_CALL(mock_function, Call(5, _)).WillOnce(Return("fifth"));
   EXPECT_CALL(mock_function, Call(6, _)).WillOnce(Return("sixth"));
   EXPECT_CALL(mock_function, Call(7, _)).WillOnce(Return("seventh"));
-  EXPECT_CALL(mock_function, Call(8, _)).WillOnce(Return("eighth"));
+  EXPECT_CALL(mock_function, Call(8, _)).WillOnce(Return("eighth")).RetiresOnSaturation();
 
   std::string const& first = cache.access(1, mock_function.AsStdFunction());
   EXPECT_EQ(first, "first");
@@ -111,39 +109,144 @@ TEST(PlruCache, Fill) {
   EXPECT_EQ(cache.size(), 8);
 }
 
-class counted {
-public:
-  counted() : ctr_{++count_} { actions.emplace_back(action::ctor, ctr_); }
-  counted(counted const&) = delete;
-  counted(counted&&) = delete;
-  ~counted() noexcept {
-    try {
-      actions.emplace_back(action::dtor, ctr_);
-    } catch(...) {
-      // Just ignore any exceptions
+class PlruCacheParam : public testing::TestWithParam<unsigned> {};
+
+TEST_P(PlruCacheParam, Key4x4Uint16) {
+  // Check for the NEON SIMD with 4 ways and a tagged key-type of uint16_t.
+  plru_cache<std::uint16_t, std::string, 4, 4> cache;
+  std::string const value = "str";
+  MockFunction<std::string(std::uint16_t, std::size_t)> mock_function;
+
+  auto const key = static_cast<std::uint16_t>(GetParam());
+  EXPECT_CALL(mock_function, Call(key, _)).WillOnce(Return(value)).RetiresOnSaturation();
+
+  EXPECT_EQ(cache.access(key, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 1U);
+
+  // A second call with the same key doesn't create a new member.
+  EXPECT_EQ(cache.access(key, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 1U);
+}
+
+TEST_P(PlruCacheParam, Key4x4Uint16TwoValues) {
+  // Check for the NEON SIMD with 4 ways and a tagged key-type of uint16_t.
+  plru_cache<std::uint16_t, std::string, 4, 4> cache;
+  std::string const value = "str";
+  MockFunction<std::string(std::uint16_t, std::size_t)> mock_function;
+
+  auto const key = static_cast<std::uint16_t>(GetParam());
+  EXPECT_CALL(mock_function, Call(key, _)).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(key + 1, _)).WillOnce(Return(value)).RetiresOnSaturation();
+
+  EXPECT_EQ(cache.access(key, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key + 1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 2U);
+
+  // A second call with the same key doesn't create a new member.
+  EXPECT_EQ(cache.access(key + 1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 2U);
+}
+
+TEST_P(PlruCacheParam, Key2x8Uint16TwoValues) {
+  // Check for the NEON SIMD with 4 ways and a tagged key-type of uint16_t.
+  plru_cache<std::uint16_t, std::string, 2, 8> cache;
+  std::string const value = "str";
+  MockFunction<std::string(std::uint16_t, std::size_t)> mock_function;
+
+  auto const key1 = static_cast<std::uint16_t>(GetParam());
+  auto const key2 = static_cast<std::uint16_t>(key1 + (1U << 3));
+  EXPECT_CALL(mock_function, Call(key1, _)).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(key2, _)).WillOnce(Return(value)).RetiresOnSaturation();
+
+  EXPECT_EQ(cache.access(key1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key2, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 2U);
+
+  // A second call with the same key doesn't create a new member.
+  EXPECT_EQ(cache.access(key2, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 2U);
+}
+
+TEST_P(PlruCacheParam, Key4x4Uint32TwoValues) {
+  // Check for the NEON SIMD with 4 ways and a tagged key-type of uint16_t.
+  plru_cache<std::uint32_t, std::string, 4, 4> cache;
+  std::string const value = "str";
+  MockFunction<std::string(std::uint32_t, std::size_t)> mock_function;
+
+  auto const key1 = GetParam();
+  auto const key2 = key1 + (1 << 2);
+  auto const key3 = key1 + (1 << 3);
+  EXPECT_CALL(mock_function, Call(key1, _)).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(key2, _)).WillOnce(Return(value)).RetiresOnSaturation();
+  EXPECT_CALL(mock_function, Call(key3, _)).WillOnce(Return(value)).RetiresOnSaturation();
+
+  EXPECT_EQ(cache.access(key1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key2, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key3, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 3U);
+
+  // A second call with the same key doesn't create a new member.
+  EXPECT_EQ(cache.access(key3, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(cache.access(key1, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 3U);
+}
+INSTANTIATE_TEST_SUITE_P(PlruCacheParam, PlruCacheParam, testing::Range(/*begin=*/0U, /*end=*/32U, /*step=*/4U));
+
+TEST(PlruCache, Key2x8Uint16) {
+  // Check for the NEON SIMD with 8 ways and a tagged key-type of uint16_t.
+  plru_cache<std::uint16_t, std::string, 2, 8> cache;
+  std::string const value = "str";
+  MockFunction<std::string(std::uint16_t, std::size_t)> mock_function;
+
+  EXPECT_CALL(mock_function, Call(3U, _)).WillOnce(Return(value)).RetiresOnSaturation();
+
+  EXPECT_EQ(cache.access(3U, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 1U);
+  EXPECT_EQ(std::distance(cache.begin(), cache.end()), 1);
+
+  // A second call with the same key doesn't create a new member.
+  EXPECT_EQ(cache.access(3U, mock_function.AsStdFunction()), value);
+  EXPECT_EQ(std::size(cache), 1U);
+}
+
+TEST(PlruCache, BeginEnd) {
+  plru_cache<std::uint16_t, std::string, 2, 8> cache;
+  EXPECT_EQ(cache.begin(), cache.end());
+  EXPECT_EQ(std::begin(cache), std::end(cache));
+}
+
+template <unsigned Sets, unsigned Ways>
+void NeverCrashes(std::vector<std::uint16_t> const& keys) {
+  plru_cache<std::uint16_t, std::uint16_t, Sets, Ways> cache;
+  MockFunction<std::uint16_t(std::uint16_t, std::size_t)> mock_function;
+  for (auto const key : keys) {
+    if (!cache.contains(key)) {
+      EXPECT_CALL(mock_function, Call(key, _)).WillOnce(Return(key)).RetiresOnSaturation();
     }
+    EXPECT_EQ(cache.access(key, mock_function.AsStdFunction()), key);
   }
+}
 
-  counted& operator=(counted const&) = delete;
-  counted& operator=(counted&&) = delete;
-
-  enum class action { ctor, dtor };
-  static std::vector<std::tuple<action, unsigned>> actions;
-
-private:
-  unsigned ctr_ = 0;
-  static unsigned count_;
-};
-
-unsigned counted::count_ = 0;
-std::vector<std::tuple<counted::action, unsigned>> counted::actions;
-
+#if defined(MIDI2_FUZZTEST) && MIDI2_FUZZTEST
+// NOLINTNEXTLINE
+auto NeverCrashes2x4 = NeverCrashes<2, 4>;
+FUZZ_TEST(PlruCacheFuzz, NeverCrashes2x4);
+#endif
+TEST(PlruCacheFuzz, Empty2x4) {
+  NeverCrashes<2, 4>({1, 2, 3, 4, 5, 4, 3, 2, 1});
+}
+TEST(PlruCacheFuzz, Empty2x8) {
+  NeverCrashes<2, 8>({1, 2, 3, 4, 5, 4, 3, 2, 1});
+}
 
 TEST(PlruCache, OverFill) {
-  plru_cache<unsigned, counted, 4, 2> cache;
-  using tup = decltype(counted::actions)::value_type;
+  plru_cache<unsigned, unsigned, 4, 2> cache;
 
-  auto miss = [](unsigned, std::size_t) { return counted{}; };
+  auto count = 0U;
+  auto miss = [&count](unsigned, std::size_t) { return ++count; };
+
   cache.access(1, miss);
   cache.access(2, miss);
   cache.access(3, miss);
@@ -152,43 +255,53 @@ TEST(PlruCache, OverFill) {
   cache.access(6, miss);
   cache.access(7, miss);
   cache.access(8, miss);
-  using enum counted::action;
-  EXPECT_THAT(counted::actions, ElementsAre(tup{ctor, 1U}, tup{ctor, 2U}, tup{ctor, 3U}, tup{ctor, 4U}, tup{ctor, 5U},
-                                            tup{ctor, 6U}, tup{ctor, 7U}, tup{ctor, 8U}));
+
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(4U, 4U), std::make_pair(5U, 5U), std::make_pair(6U, 6U),
+                                          std::make_pair(7U, 7U), std::make_pair(8U, 8U)));
   // Accesses of items in the cache. These should now be most-recently used.
   cache.access(1, miss);
   cache.access(2, miss);
   cache.access(3, miss);
-  EXPECT_EQ(counted::actions.size(), 8U) << "Expected no new actions to have happened";
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(4U, 4U), std::make_pair(5U, 5U), std::make_pair(6U, 6U),
+                                          std::make_pair(7U, 7U), std::make_pair(8U, 8U)));
 
-  // Reset the actions.
-  counted::actions.clear();
   // Accessing a new element will cause an eviction.
   cache.access(9, miss);
-  // Check what we threw out and what was added.
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 5U}, tup{ctor, 9U}));
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(4U, 4U), std::make_pair(6U, 6U), std::make_pair(7U, 7U),
+                                          std::make_pair(8U, 8U), std::make_pair(9U, 9U)));
 
-  counted::actions.clear();
   cache.access(10, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 6U}, tup{ctor, 10U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(4U, 4U), std::make_pair(7U, 7U), std::make_pair(8U, 8U),
+                                          std::make_pair(9U, 9U), std::make_pair(10U, 10U)));
   cache.access(11, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 7U}, tup{ctor, 11U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(4U, 4U), std::make_pair(8U, 8U), std::make_pair(9U, 9U),
+                                          std::make_pair(10U, 10U), std::make_pair(11U, 11U)));
   cache.access(12, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 4U}, tup{ctor, 12U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(8U, 8U), std::make_pair(9U, 9U), std::make_pair(10U, 10U),
+                                          std::make_pair(11U, 11U), std::make_pair(12U, 12U)));
+  cache.access(1, miss);
   cache.access(13, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 1U}, tup{ctor, 13U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(2U, 2U), std::make_pair(3U, 3U),
+                                          std::make_pair(8U, 8U), std::make_pair(10U, 10U), std::make_pair(11U, 11U),
+                                          std::make_pair(12U, 12U), std::make_pair(13U, 13U)));
   cache.access(14, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 2U}, tup{ctor, 14U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(3U, 3U), std::make_pair(8U, 8U),
+                                          std::make_pair(10U, 10U), std::make_pair(11U, 11U), std::make_pair(12U, 12U),
+                                          std::make_pair(13U, 13U), std::make_pair(14U, 14U)));
   cache.access(15, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 3U}, tup{ctor, 15U}));
-  counted::actions.clear();
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(8U, 8U), std::make_pair(10U, 10U),
+                                          std::make_pair(11U, 11U), std::make_pair(12U, 12U), std::make_pair(13U, 13U),
+                                          std::make_pair(14U, 14U), std::make_pair(15U, 15U)));
   cache.access(16, miss);
-  EXPECT_THAT(counted::actions, ElementsAre(tup{dtor, 8U}, tup{ctor, 16U}));
+  EXPECT_THAT(cache, UnorderedElementsAre(std::make_pair(1U, 1U), std::make_pair(10U, 10U), std::make_pair(11U, 11U),
+                                          std::make_pair(12U, 12U), std::make_pair(13U, 13U), std::make_pair(14U, 14U),
+                                          std::make_pair(15U, 15U), std::make_pair(16U, 16U)));
 }
 
 }  // end anonymous namespace
