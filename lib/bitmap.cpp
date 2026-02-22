@@ -133,9 +133,9 @@ void copy_row_misaligned(unsigned src_x, unsigned src_x_end, std::byte const* co
   auto* dest = dest_row + (dest_x / 8U);
 
   constexpr bool trace = false;
-#if defined(DRAW_HOSTED) && DRAW_HOSTED
+#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
   trace_source<trace>(src_x, src_x_end, src_row);
-#endif
+#endif  // DRAW_HOSTED && __cpp_lib_print
 
   auto const m = dest_x % 8U;
   auto const mask_high = 0xFF_b << m;
