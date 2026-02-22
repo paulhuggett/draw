@@ -251,7 +251,7 @@ void bitmap::dump(std::FILE* const stream) const {
   for (auto const d : store_) {
     auto d2 = std::to_underlying(d);
     for (auto ctr = 0U; ctr < 8U; ++ctr) {
-      std::putc((d2 & 0b10000000) != 0 ? '1' : '0');
+      std::putc((d2 & 0b10000000) != 0 ? '1' : '0', stream);
       d2 <<= 1;
     }
 
