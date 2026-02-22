@@ -33,7 +33,6 @@
 #include <cassert>
 #include <chrono>
 #include <cmath>
-#include <print>
 #include <string_view>
 #include <thread>
 #include <vector>
