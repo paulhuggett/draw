@@ -116,6 +116,7 @@ public:
     using container_type =
         std::conditional_t<std::is_const_v<T>, std::array<member, Size> const, std::array<member, Size>>;
 
+    constexpr iterator_type() noexcept = default;
     constexpr iterator_type(T* const slot, container_type* const container) noexcept
         : slot_{slot}, container_{container} {
       this->move_forward_to_occupied();
@@ -204,15 +205,15 @@ public:
       return *this;
     }
 
-    T* slot_;
-    container_type* container_;
+    T* slot_ = nullptr;
+    container_type* container_ = nullptr;
   };
 
   using iterator = iterator_type<member>;
   using const_iterator = iterator_type<member const>;
 
-  constexpr explicit iumap(hasher const& hash = Hash{}, key_equal const& equal = key_equal{})
-      : hash_{hash}, equal_{equal} {}
+  constexpr iumap() : hash_{hasher{}}, equal_{key_equal{}} {}
+  constexpr explicit iumap(hasher const& hash, key_equal const& equal = key_equal{}) : hash_{hash}, equal_{equal} {}
   constexpr iumap(std::initializer_list<value_type> init, hasher const& hash = Hash{},
                   key_equal const& equal = key_equal{})
       : iumap{hash, equal} {
@@ -232,9 +233,11 @@ public:
   // Iterators
   [[nodiscard]] constexpr auto begin() noexcept { return iterator{v_.data(), &v_}; }
   [[nodiscard]] constexpr auto begin() const noexcept { return const_iterator{v_.data(), &v_}; }
+  [[nodiscard]] constexpr auto cbegin() noexcept { return const_iterator{v_.data(), &v_}; }
 
   [[nodiscard]] constexpr auto end() noexcept { return iterator{v_.data() + v_.size(), &v_}; }
   [[nodiscard]] constexpr auto end() const noexcept { return const_iterator{v_.data() + v_.size(), &v_}; }
+  [[nodiscard]] constexpr auto cend() noexcept { return const_iterator{v_.data() + v_.size(), &v_}; }
 
   // Capacity
   [[nodiscard]] constexpr auto empty() const noexcept { return size_ == 0; }

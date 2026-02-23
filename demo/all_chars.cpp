@@ -29,6 +29,7 @@
 //
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+
 #include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
 #include "draw/sans16.hpp"
@@ -48,12 +49,8 @@ namespace {
 
 std::vector<char32_t> sorted_code_points(font const& f) {
   std::vector<char32_t> code_points;
-  code_points.reserve(std::size(f.glyphs));
-  for (auto const& kvp : f.glyphs) {
-    if (kvp.first > ' ') {
-      code_points.push_back(kvp.first);
-    }
-  }
+  std::ranges::copy(std::views::keys(f.glyphs) | std::views::filter([](char32_t const k) { return k > ' '; }),
+                    std::back_inserter(code_points));
   std::ranges::sort(code_points);
   return code_points;
 }
