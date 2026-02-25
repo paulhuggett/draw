@@ -40,6 +40,8 @@ endif()
 
 include(CTest)
 include(CheckCXXCompilerFlag)
+include(FetchContent)
+
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
     CMAKE_SYSTEM_NAME STREQUAL "Windows" OR
@@ -143,6 +145,12 @@ set(DRAW_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(lib)
 
 if (DRAW_UNIT_TESTS)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG HEAD
+  )
+
   enable_testing()
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
   # on Windows.
@@ -150,7 +158,19 @@ if (DRAW_UNIT_TESTS)
   # We don't want to install either gtest or gmock.
   set(INSTALL_GTEST Off CACHE BOOL "Disable gtest install")
   set(INSTALL_GMOCK Off CACHE BOOL "Disable gmock install")
-  add_subdirectory(googletest)
+  FetchContent_MakeAvailable(googletest)
+
+  # Adjust some compilation options for the googletest targets
+  foreach(target gtest gmock gmock_main gtest_main)
+    if(TARGET ${target})
+      target_compile_options(${target} PRIVATE
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-deprecated-declarations -Wno-covered-switch-default>
+      )
+      target_compile_features(${target} PUBLIC cxx_std_23)
+      target_compile_definitions(${target} PUBLIC GTEST_REMOVE_LEGACY_TEST_CASEAPI_=1)
+    endif()
+  endforeach()
+
   add_subdirectory(unit_tests)
 endif(DRAW_UNIT_TESTS)
 
