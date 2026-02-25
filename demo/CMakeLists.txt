@@ -58,4 +58,3 @@ if (DRAW_HOSTED)
   target_link_libraries(draw-all-chars PRIVATE draw)
   setup_target(draw-all-chars)
 endif()
-
