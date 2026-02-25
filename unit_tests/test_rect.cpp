@@ -45,7 +45,7 @@ void PrintTo(rect const& r, std::ostream* os) {
 namespace {
 
 TEST(Rect, Null) {
-  draw::rect const r;
+  constexpr draw::rect r;
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
   EXPECT_TRUE(r.empty());
