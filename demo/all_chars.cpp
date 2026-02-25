@@ -41,10 +41,6 @@ using draw::coordinate;
 using draw::font;
 using draw::point;
 
-#ifndef TRACE_SOURCE
-#define TRACE_SOURCE (0)
-#endif
-
 namespace {
 
 std::vector<char32_t> sorted_code_points(font const& f) {
@@ -65,20 +61,20 @@ int main() {
   draw::glyph_cache gc;
 
   point pos;
-  for (auto const key : sorted_code_points(sans16)) {
-    auto const width = bm.char_width(sans16, key) + 1;
+  for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {
+    auto const width = bm.char_width(font, code_point);
     if (pos.x + width > bm.width()) {
       pos.x = 0;
-      pos.y += sans16.height * 8;
+      pos.y += font.height * 8;
       if (pos.y >= bm.height()) {
         break;
       }
     }
 
-    bm.draw_char(gc, sans16, key, pos);
-    pos.x += width;
+    bm.draw_char(gc, sans16, code_point, pos);
+    pos.x += width + 1;
   }
-#if TRACE_SOURCE
+#if defined(DRAW_HOSTED) && DRAW_HOSTED
   bm.dump();
 #endif
 }
