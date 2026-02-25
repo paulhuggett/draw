@@ -67,14 +67,16 @@ struct font {
   std::uint8_t height : 4 = 0;  // in bytes rather than pixels.
   std::uint8_t spacing : 4 = 0;
 
-  using glyph = std::tuple<std::span<kerning_pair const>, std::span<std::byte const>>;
+  using kerning_pairs = std::span<kerning_pair const>;
+  using bytes = std::span<std::byte const>;
+  using glyph = std::tuple<kerning_pairs, bytes>;
 
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
-    auto const& bitmap = std::get<std::span<std::byte const>>(g);
+    auto const& bitmap = std::get<bytes>(g);
     return static_cast<std::uint16_t>(bitmap.size() / this->height);
   }
 
-  [[nodiscard]] constexpr glyph const* find_glyph(char32_t code_point) const {
+  [[nodiscard]] constexpr glyph const* find_glyph(char32_t const code_point) const {
     auto pos = glyphs.find(code_point);
     if (auto const end = glyphs.end(); pos == end) {
       pos = glyphs.find(white_square);
