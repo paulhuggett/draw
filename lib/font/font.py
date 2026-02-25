@@ -176,7 +176,7 @@ KernDictValue = List[Tuple[int, int]]  #type KernDictValue = list[tuple[int, int
 KernDict = Dict[int, KernDictValue]    #type KernDict = dict[int, KernDictValue]
 
 def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
-    source.write(f'std::array const kern_{k:04x} = {{')
+    source.write(f'constexpr std::array kern_{k:04x} = {{')
     separator = ''
     for prev_cp, distance in kdv:
         source.write(f'{separator}kerning_pair{{.preceding={prev_cp},.distance={distance}}}')
