@@ -36,8 +36,8 @@
 /// It is intended as a small cache for objects which are relatively cheap to store and relatively
 /// expensive to create. The container's keys must be unsigned integral types.
 
-#ifndef MIDI2_ADT_PLRU_CACHE_HPP
-#define MIDI2_ADT_PLRU_CACHE_HPP
+#ifndef DRAW_PLRU_CACHE_HPP
+#define DRAW_PLRU_CACHE_HPP
 
 #include <algorithm>
 #include <array>
@@ -47,11 +47,8 @@
 #include <climits>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <memory>
-#include <new>
 #include <numeric>
-#include <ranges>
 
 #if __ARM_NEON
 #include <arm_neon.h>
@@ -66,8 +63,16 @@ namespace details {
 
 template <typename T>
 struct aligned_storage {
-  [[nodiscard]] constexpr T& value() noexcept { return *std::bit_cast<T*>(&v[0]); }
-  [[nodiscard]] constexpr T const& value() const noexcept { return *std::bit_cast<T const*>(&v[0]); }
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
+  [[nodiscard]] constexpr auto& reference(this auto& self) noexcept {
+    using result_type = std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, T const, T>;
+    return *std::bit_cast<result_type*>(&self.v[0]);
+  }
+#else
+  [[nodiscard]] constexpr T& reference() noexcept { return *std::bit_cast<T*>(&v[0]); }
+  [[nodiscard]] constexpr T const& reference() const noexcept { return *std::bit_cast<T const*>(&v[0]); }
+#endif // __cpp_explicit_this_parameter
+  // NOLINTNEXTLINE(hicpp-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,misc-non-private-member-variables-in-classes)
   alignas(T) std::byte v[sizeof(T)];
 };
 
@@ -115,7 +120,7 @@ private:
 template <std::unsigned_integral Key, unsigned SetBits>
 class tagged_key {
 public:
-  using value_type = uinteger<sizeof(Key) * CHAR_BIT - SetBits + 1>::type;
+  using value_type = uinteger<(sizeof(Key) * CHAR_BIT) - SetBits + 1>::type;
 
   constexpr tagged_key() noexcept = default;
   constexpr explicit tagged_key(Key key) noexcept : v_{static_cast<value_type>(1 | (key >> (SetBits - 1)))} {}
@@ -227,7 +232,7 @@ public:
     auto const tag = tagged_key_type{key};
     if (auto const vi = find_matching(tag); vi < Ways) {
       assert(keys_[vi].valid());
-      auto& found_result = values_[vi].value();
+      auto& found_result = values_[vi].reference();
       if (!valid(found_result)) {
         found_result = miss(key, index + vi);
       }
@@ -238,7 +243,7 @@ public:
     // Find the array member that is to be re-used by traversing the tree.
     std::size_t const victim = plru_.oldest();
     // The key was not found: call miss() to populate it.
-    auto& result = values_[victim].value();
+    auto& result = values_[victim].reference();
     if (keys_[victim].valid()) {
       result = miss(key, index + victim);
     } else {
@@ -253,7 +258,7 @@ public:
   constexpr void clear() noexcept {
     for (auto index = std::size_t{0}; index < Ways; ++index) {
       if (keys_[index].valid()) {
-        std::destroy_at(&values_[index].value());
+        std::destroy_at(&values_[index].reference());
       }
       keys_[index] = tagged_key_type{};
     }
@@ -273,11 +278,11 @@ public:
   }
   [[nodiscard]] constexpr MappedType const& value(std::size_t const index) const noexcept {
     assert(index < values_.size());
-    return values_[index].value();
+    return values_[index].reference();
   }
   [[nodiscard]] constexpr MappedType& value(std::size_t const index) noexcept {
     assert(index < values_.size());
-    return values_[index].value();
+    return values_[index].reference();
   }
 
 private:
@@ -325,8 +330,11 @@ public:
   template <typename T>
     requires(std::is_same_v<T, mapped_type> || std::is_same_v<T, mapped_type const>)
   struct proxy {
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes,cppcoreguidelines-avoid-const-or-ref-data-members)
     Key const first;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes,cppcoreguidelines-avoid-const-or-ref-data-members)
     T& second;
+    // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
     constexpr operator std::pair<Key const, std::remove_const_t<T>>() const noexcept { return {first, second}; }
     constexpr bool operator==(proxy const&) const noexcept = default;
     constexpr bool operator==(std::pair<Key const, std::remove_const_t<T>> const& other) const noexcept {
@@ -365,6 +373,7 @@ public:
       return proxy<Mapped>{static_cast<Key>(s.key(way_index_) | set_index_), s.value(way_index_)};
     }
     constexpr iterator_type& operator++() {
+      // NOLINTNEXTLINE(cppcoreguidelines-avoid-do-while)
       do {
         ++way_index_;
         if (way_index_ >= plru_cache::ways) {
@@ -509,4 +518,4 @@ private:
 
 }  // end namespace draw
 
-#endif  // MIDI2_ADT_PLRU_CACHE_HPP
+#endif  // DRAW_PLRU_CACHE_HPP
