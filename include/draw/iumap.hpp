@@ -74,9 +74,7 @@ namespace details {
 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
 concept mappable = requires(Key k) {
-  details::is_power_of_two(Size);
-  std::is_nothrow_destructible_v<Key>;
-  std::is_nothrow_destructible_v<Mapped>;
+  details::is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>;
   { KeyEqual{}(k, k) } -> std::convertible_to<bool>;
   { Hash{}(k) } -> std::convertible_to<std::size_t>;
 };
