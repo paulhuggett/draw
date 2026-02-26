@@ -121,6 +121,7 @@ template <typename... Args> void trace_print(char const* format, Args&&... args)
 }
 #else
 template <typename... Args> void trace_print(char const*, Args&&...) {
+  // do nothing
 }
 #endif  // DRAW_HOSTED && __cpp_lib_print
 
@@ -484,7 +485,9 @@ point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, 
 }
 
 coordinate string_width(font const& f, std::u8string_view s) {
-  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) {});
+  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) {
+    // do nothing
+  });
 }
 
 }  // end namespace draw
