@@ -52,10 +52,10 @@ private:
   [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
   [[nodiscard]] static constexpr std::size_t get_store_size(font const& f) noexcept {
     std::size_t const stride = (f.widest + 7U) / 8U;
-    std::size_t const pixel_height = f.height * 8U;
+    auto const pixel_height = f.height * 8U;
     return stride * pixel_height;
   }
-  std::size_t const store_size_;
+  std::size_t store_size_;
 
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::vector<std::byte> store_;
