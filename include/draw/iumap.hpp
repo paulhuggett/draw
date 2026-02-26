@@ -55,6 +55,8 @@
 
 namespace draw {
 
+namespace details {
+
 /// Returns true if the argument is a power of two and false otherwise.
 ///
 /// \param n An integer value to check whether it is a power of two.
@@ -68,6 +70,17 @@ namespace draw {
 #endif
 }
 
+}  // end namespace details
+
+template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
+concept mappable = requires(Key k) {
+  details::is_power_of_two(Size);
+  std::is_nothrow_destructible_v<Key>;
+  std::is_nothrow_destructible_v<Mapped>;
+  { KeyEqual{}(k, k) } -> std::convertible_to<bool>;
+  { Hash{}(k) } -> std::convertible_to<std::size_t>;
+};
+
 /// An in-place unordered hash table.
 ///
 /// \tparam Key  The key type
@@ -77,7 +90,7 @@ namespace draw {
 /// \tparam KeyEqual  The type used to compare keys
 template <typename Key, typename Mapped, std::size_t Size, typename Hash = std::hash<std::remove_cv_t<Key>>,
           typename KeyEqual = std::equal_to<Key>>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 class iumap {
   friend class iterator;
   struct member;
@@ -131,6 +144,7 @@ public:
     constexpr bool operator<=>(iterator_type<T const> const& other) const noexcept {
       return std::make_pair(slot_, container_) <=> std::make_pair(other.slot_, other.container_);
     }
+    // NOLINTNEXTLINE(readability-named-parameter,hicpp-named-parameter)
     constexpr auto operator==(sentinel<T>) const noexcept { return slot_ == this->end_limit(); }
     constexpr auto operator!=(sentinel<T> other) const noexcept { return !operator==(other); }
 
@@ -295,14 +309,24 @@ private:
 
     void destroy() noexcept;
 
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
+    [[nodiscard]] constexpr auto* pointer(this auto& self) noexcept {
+      using result_type =
+          std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, value_type const, value_type>;
+      return std::bit_cast<result_type*>(&self.storage[0]);
+    }
+    [[nodiscard]] constexpr auto& reference(this auto& self) noexcept { return *self.pointer(); }
+#else
     [[nodiscard]] constexpr value_type* pointer() noexcept { return std::bit_cast<value_type*>(&storage[0]); }
     [[nodiscard]] constexpr value_type const* pointer() const noexcept {
       return std::bit_cast<value_type const*>(&storage[0]);
     }
     [[nodiscard]] constexpr value_type& reference() noexcept { return *this->pointer(); }
     [[nodiscard]] constexpr value_type const& reference() const noexcept { return *this->pointer(); }
-
+#endif
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     enum state state = state::unused;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,misc-non-private-member-variables-in-classes)
     alignas(value_type) std::byte storage[sizeof(value_type)]{};
   };
   [[no_unique_address]] hasher hash_;
@@ -326,13 +350,13 @@ private:
     return const_cast<member*>(self->find_insert_slot(key));
   }
   constexpr member const* find_insert_slot(Key const& key) const;
-#endif
+#endif  // __cpp_explicit_this_parameter
 };
 
 // ctor
 // ~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member const& other) noexcept(
     std::is_nothrow_copy_constructible_v<value_type>)
     : state{other.state} {
@@ -341,7 +365,7 @@ iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member const& other) no
   }
 }
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member&& other) noexcept(
     std::is_nothrow_move_constructible_v<value_type>)
     : state{other.state} {
@@ -353,7 +377,7 @@ iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member&& other) noexcep
 // operator=
 // ~~~~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member const& other) noexcept(
     std::is_nothrow_copy_constructible_v<value_type>) -> member& {
   if (this == &other) {
@@ -370,7 +394,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member const& o
 }
 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member&& other) noexcept(
     std::is_nothrow_move_constructible_v<value_type>) -> member& {
   if (this == &other) {
@@ -389,7 +413,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member&& other)
 // destroy
 // ~~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 void iumap<Key, Mapped, Size, Hash, KeyEqual>::member::destroy() noexcept {
   if (state == state::occupied) {
     std::destroy_at(this->pointer());
@@ -400,7 +424,7 @@ void iumap<Key, Mapped, Size, Hash, KeyEqual>::member::destroy() noexcept {
 // clear
 // ~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 void iumap<Key, Mapped, Size, Hash, KeyEqual>::clear() noexcept {
   for (auto& entry : v_) {
     entry.destroy();
@@ -412,7 +436,7 @@ void iumap<Key, Mapped, Size, Hash, KeyEqual>::clear() noexcept {
 // try emplace
 // ~~~~~~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 template <typename... Args>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&&... args)
     -> std::pair<iterator, bool> {
@@ -437,7 +461,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&
 // insert
 // ~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert(value_type const& value) -> std::pair<iterator, bool> {
   return try_emplace(value.first, value.second);
 }
@@ -445,7 +469,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert(value_type const& value) -
 // insert or assign
 // ~~~~~~~~~~~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 template <typename M>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, M&& value)
     -> std::pair<iterator, bool> {
@@ -471,7 +495,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, 
 // find
 // ~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) const -> const_iterator {
   auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
@@ -481,7 +505,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) cons
 }
 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> iterator {
   auto* const slot = this->lookup_slot(k);
   if (slot == nullptr || slot->state != state::occupied) {
@@ -493,7 +517,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> i
 // erase
 // ~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
   member* const slot = pos.raw();
   auto const result = pos + 1;
@@ -513,7 +537,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
 /// Searches the container for a specified key. Stops when the key is found or an unused slot is probed.
 /// Tombstones are ignored.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(this auto& self, Key const& key) {
 #else
@@ -548,7 +572,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Key const& 
 /// key or an unused slot are found. If tombstones are encountered, then returns the first tombstone slot
 /// so that when inserted, the key's probing distance is as short as possible.
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires(is_power_of_two(Size) && std::is_nothrow_destructible_v<Key> && std::is_nothrow_destructible_v<Mapped>)
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(this auto& self, Key const& key) {
 #else
