@@ -50,7 +50,7 @@
 #include <memory>
 #include <numeric>
 
-#if __ARM_NEON
+#if defined(__ARM_NEON) && __ARM_NEON
 #include <arm_neon.h>
 #endif  // __ARM_NEON
 
@@ -154,7 +154,7 @@ struct match_finder {
   }
 };
 
-#if __ARM_NEON
+#if defined(__ARM_NEON) && __ARM_NEON
 template <std::unsigned_integral Key, unsigned SetBits>
   requires(std::is_same_v<typename tagged_key<Key, SetBits>::value_type, std::uint16_t>)
 struct match_finder<Key, SetBits, 4> {
@@ -217,7 +217,6 @@ struct match_finder<Key, SetBits, 4> {
     return (static_cast<unsigned>(std::countr_zero(nz_or)) + 1U) / 16U;
   }
 };
-
 #endif  // __ARM_NEON
 
 template <std::unsigned_integral Key, typename MappedType, unsigned SetBits, std::size_t Ways>
