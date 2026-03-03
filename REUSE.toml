@@ -1,0 +1,19 @@
+version = 1
+
+[[annotations]]
+path = [
+  "lib/font/sans_font/**/*",
+  "include/draw/icubaby.hpp",
+  ".github/workflows/*"
+]
+SPDX-FileCopyrightText = "2025 Paul Bowen-Huggett"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/font/png.py"
+SPDX-FileCopyrightText = [
+  "Copyright (C) 2006 Johann C. Rocholl <johann@browsershots.org>",
+  "Copyright (C) 2009 David Jones <drj@pobox.com>",
+  "Copyright (C) 2006 Nicko van Someren <nicko@nicko.org>"
+]
+SPDX-License-Identifier = "MIT"

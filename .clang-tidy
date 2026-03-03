@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: "2025 Paul Bowen-Huggett"
+# SPDX-License-Identifier: CC0-1.0
+---
+Checks:            |-
+  *,
+  -altera-*,
+  -cert-dcl21-cpp,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic
+  -fuchsia-*,
+  -llvm-header-guard,
+  -llvmlibc-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers
+  -readability-identifier-length
+
+WarningsAsErrors:  ''
+HeaderFilterRegex: ''
+FormatStyle:       file
+
+CheckOptions:
+  - key:   cppcoreguidelines-avoid-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  - key:   readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  - key:   hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
+    value: true
+...
