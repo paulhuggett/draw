@@ -6,7 +6,8 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-# Copyright © 2025 Paul Bowen-Huggett
+# SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+# SPDX-License-Identifier: MIT
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,7 +28,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-# SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
 cmake_minimum_required(VERSION 3.20)
 project(draw CXX)
@@ -40,6 +40,7 @@ endif()
 
 include(CTest)
 include(CheckCXXCompilerFlag)
+include(CheckLinkerFlag)
 include(FetchContent)
 
 
@@ -107,6 +108,7 @@ function (setup_target target)
       -Wno-c++2a-compat
       -Wno-covered-switch-default
       -Wno-ctad-maybe-unsupported
+      -Wno-nullability-extension
       -Wno-poison-system-directories
       -Wno-unsafe-buffer-usage
       -Wno-switch-enum
@@ -117,27 +119,34 @@ function (setup_target target)
     endforeach()
   endif()
 
-  if (DRAW_WERROR)
-    list(APPEND clang_options -Werror)
-    list(APPEND gcc_options -Werror)
-    list(APPEND msvc_options /WX)
-  endif()
-
-  if (DRAW_HOSTED)
-    target_compile_definitions(${target} PRIVATE DRAW_HOSTED=1)
-  endif()
-
+  target_compile_definitions(${target} PRIVATE $<$<BOOL:${DRAW_HOSTED}>:DRAW_HOSTED=1>)
   target_compile_options(${target}
     PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
   )
+
+  target_compile_options(${target} PRIVATE
+    $<$<AND:$<BOOL:${DRAW_WERROR}>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Werror>
+    $<$<AND:$<BOOL:${DRAW_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+  )
+
+  set(ld64_link_options LINKER:-map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
+  set(ld_link_options LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
+  set(msvc_link_options LINKER:/Map:${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
+  check_linker_flag(CXX "${ld64_link_options}" is_ld64)
+  check_linker_flag(CXX "${ld_link_options}" is_ld)
+  check_linker_flag(CXX "${msvc_link_options}" is_msvc)
+
   target_link_options(${target}
     PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:${clang_options}>
     $<$<CXX_COMPILER_ID:GNU>:${gcc_options}>
-    $<$<CXX_COMPILER_ID:MSVC>:>
+    $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
+    $<$<BOOL:${is_ld64}>:${ld64_link_options}>
+    $<$<BOOL:${is_ld}>:${ld_link_options}>
+    $<$<BOOL:${is_msvc}>:${msvc_link_options}>
   )
 endfunction(setup_target)
 
