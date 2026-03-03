@@ -51,7 +51,7 @@ namespace {
 namespace draw {
 
 glyph_cache::glyph_cache(std::span<std::byte> const& store) noexcept : store_size_{get_store_size()}, store_{store} {
-  assert(store_.size_bytes() >= store_size_);
+  assert(store_.size_bytes() >= get_size());
 }
 
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {

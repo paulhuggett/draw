@@ -478,7 +478,7 @@ public:
   ///@}
 
   /// \returns The maximum possible number of elements that can be held by the cache.
-  [[nodiscard]] constexpr std::size_t max_size() const noexcept { return Sets * Ways; }
+  [[nodiscard]] static constexpr std::size_t max_size() noexcept { return sets * ways; }
   /// \returns The number of elements held by the cache.
   [[nodiscard]] constexpr std::size_t size() const noexcept {
     return std::ranges::fold_left(sets_, std::size_t{0},

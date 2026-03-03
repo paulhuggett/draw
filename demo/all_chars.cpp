@@ -30,6 +30,8 @@
 // SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
+#include <vector>
+
 #include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
 #include "draw/sans16.hpp"
@@ -58,7 +60,8 @@ int main() {
   constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap bm{frame_store, frame_width, frame_height};
-  draw::glyph_cache gc;
+  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
+  draw::glyph_cache gc{glyph_cache_store};
 
   point pos;
   for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {

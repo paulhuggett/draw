@@ -47,11 +47,14 @@ public:
   glyph_cache(std::span<std::byte> const& store) noexcept;
   [[nodiscard]] bitmap const& get(font const& f, char32_t code_point);
 
-  [[nodiscard]] static constexpr std::size_t get_store_size() noexcept {
-    return std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_font_store_size));
+  [[nodiscard]] static constexpr std::size_t get_size() noexcept {
+    return decltype(cache_)::max_size() * get_store_size();
   }
 
 private:
+  [[nodiscard]] static constexpr std::size_t get_store_size() noexcept {
+    return std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_font_store_size));
+  }
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
   [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {
