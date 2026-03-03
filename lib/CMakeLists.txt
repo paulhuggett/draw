@@ -6,7 +6,8 @@
 #*  \____|_|  |_|\__,_|_|\_\___|_____|_|___/\__|___/ *
 #*                                                   *
 #===----------------------------------------------------------------------===//
-# Copyright © 2025 Paul Bowen-Huggett
+# SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+# SPDX-License-Identifier: MIT
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,7 +28,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-# SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
 add_subdirectory(font)
 
@@ -39,6 +39,7 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/icubaby.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/tracer.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/types.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
 

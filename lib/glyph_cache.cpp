@@ -6,7 +6,8 @@
 //*  \__, |_|\__, | .__/|_| |_|  \___\__,_|\___|_| |_|\___| *
 //*  |___/   |___/|_|                                       *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -27,37 +28,30 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #include "draw/glyph_cache.hpp"
 
 #include <cassert>
-#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
-#include <print>
-#endif  // DRAW_HOSTED && __cpp_lib_print
+#include <cstddef>
+#include <cstdint>
+#include <span>
+
+#include "draw/bitmap.hpp"
+#include "draw/tracer.hpp"
+#include "draw/types.hpp"
 
 namespace {
 
-/// Enable to inspect the unpacking and rotation of the font data.
-constexpr bool trace_unpack = false;
-
-#if defined(DRAW_HOSTED) && DRAW_HOSTED && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
-template <typename... Args> void trace_print(char const* format, Args&&... args) {
-  std::print(format, std::forward<Args>(args)...);
+[[maybe_unused]] constexpr char get_pixel_for_trace(std::byte const pixels, unsigned const bit) {
+  return (pixels & (std::byte{1U} << bit)) != std::byte{0U} ? 'X' : ' ';
 }
-#else
-template <typename... Args> void trace_print(char const*, Args&&...) {
-  // tracing is disabled.
-}
-#endif  // DRAW_HOSTED && __cpp_lib_print
 
 }  // end anonymous namespace
 
 namespace draw {
 
-glyph_cache::glyph_cache() noexcept
-    : store_size_{std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_store_size))} {
-  store_.resize(cache_.max_size() * store_size_);
+glyph_cache::glyph_cache(std::span<std::byte> const& store) noexcept : store_size_{get_store_size()}, store_{store} {
+  assert(store_.size_bytes() >= store_size_);
 }
 
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
@@ -67,46 +61,43 @@ bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
     auto const begin = std::begin(store_) + static_cast<difference_type>(index * store_size_);
     auto const end = begin + static_cast<difference_type>(store_size_);
     assert(end <= std::end(store_));
-    return this->render(f, key, std::span{begin, end});
+    return glyph_cache::render(f, key, std::span{begin, end});
   });
 }
 
 bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) {
-  auto const height = static_cast<std::uint16_t>(f.height * 8);
+  /// Enable to inspect the unpacking and rotation of the font data.
+  // ReSharper disable once CppTooWideScope
+  constexpr tracer<false> trace;
+
+  auto const height = static_cast<std::uint16_t>(f.height * 8U);
   font::glyph const* const glyph = f.find_glyph(code_point);
 
   auto const& bitmaps = std::get<std::span<std::byte const>>(*glyph);
   auto const width = f.width(*glyph);
   bitmap bm{bitmap_store, width, height};
-  for (auto y = std::size_t{0}; y < height; ++y) {
-    if constexpr (trace_unpack) {
-      trace_print("|");
-    }
+  for (auto y = std::size_t{0U}; y < height; ++y) {
+    trace("|");
 
     auto x = 0U;
 
-    if (width >= 8) {
+    if (width >= 8U) {
       // Assign whole bytes.
-      for (; x < (width & ~0b111U); x += 8) {
-        auto pixels = std::byte{0};
+      for (; x < (width & ~0b111U); x += 8U) {
+        auto pixels = std::byte{0U};
         for (auto bit = 0U; bit < 8U; ++bit) {
           auto const src_index = ((x + bit) * f.height) + (y / 8U);
           assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
-          if ((bitmaps[src_index] & (std::byte{1} << (y % 8U))) != std::byte{0}) {
-            pixels |= std::byte{0x80} >> bit;
+          if ((bitmaps[src_index] & (std::byte{1U} << (y % 8U))) != std::byte{0U}) {
+            pixels |= std::byte{0x80U} >> bit;
           }
         }
 
         auto const dest_index = y * bm.stride() + (x / 8U);
         assert(dest_index < bitmap_store.size() && "The destination byte is not within the bitmap store");
         bitmap_store[dest_index] = pixels;
-        if constexpr (trace_unpack) {
-          auto const get_pixel = [pixels](unsigned bit) {
-            return (pixels & (std::byte{1} << bit)) != std::byte{0} ? 'X' : ' ';
-          };
-          for (auto ctr = 0U; ctr < 8U; ++ctr) {
-            trace_print("{}", get_pixel(7 - ctr));
-          }
+        for (auto ctr = 0U; ctr < 8U; ++ctr) {
+          trace("{}", get_pixel_for_trace(pixels, 7 - ctr));
         }
       }
     }
@@ -114,15 +105,11 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
     for (; x < width; ++x) {
       auto const src_index = (x * f.height) + (y / 8U);
       assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
-      auto const pixel = bitmaps[src_index] & (std::byte{1} << (y % 8U));
+      auto const pixel = bitmaps[src_index] & (std::byte{1U} << (y % 8U));
       bm.set(point{.x = static_cast<coordinate>(x), .y = static_cast<coordinate>(y)}, pixel != std::byte{0});
-      if constexpr (trace_unpack) {
-        trace_print("{}", pixel != std::byte{0} ? 'X' : ' ');
-      }
+      trace("{}", pixel != std::byte{0U} ? 'X' : ' ');
     }
-    if constexpr (trace_unpack) {
-      trace_print("|{0}\n", y == f.baseline ? "<-" : "");
-    }
+    trace("|{0}\n", y == f.baseline ? "<-" : "");
   }
   return bm;
 }

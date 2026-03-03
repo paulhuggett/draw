@@ -59,29 +59,34 @@ class bitmap {
 
 public:
   constexpr bitmap() noexcept = default;
-  constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height, std::uint16_t stride) noexcept
-      : store_{store}, width_{width}, height_{height}, stride_{stride} {
+  constexpr bitmap(std::span<std::byte> const& store, std::uint16_t const width, std::uint16_t const height,
+                   std::uint16_t const stride) noexcept
+      : width_{width}, height_{height}, stride_{stride}, store_{store} {
     assert(store.size() >= this->actual_store_size() && "store is too small");
     assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
   }
-  constexpr bitmap(std::span<std::byte> store, std::uint16_t width, std::uint16_t height) noexcept
+  constexpr bitmap(std::span<std::byte> const& store, std::uint16_t const width, std::uint16_t const height) noexcept
       : bitmap(store, width, height, required_stride(width)) {}
 
-  static constexpr std::uint16_t required_stride(std::uint16_t width) noexcept {
+  static constexpr std::uint16_t required_stride(std::uint16_t const width) noexcept {
     assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
-    return (width + 7U) / 8U;
+    return static_cast<std::uint16_t>((width + 7U) / 8U);
   }
   /// Returns the store size required for a bitmap with the supplied dimensions.
   static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
-    return required_stride(width) * height;
+    return required_stride(width) * static_cast<unsigned>(height);
   }
 
-  enum class transfer_mode { mode_copy, mode_or };
+  enum class transfer_mode : std::uint8_t { mode_copy, mode_or };
   void copy(bitmap const& source, point dest_pos, transfer_mode mode);
-  void clear() { std::ranges::fill(this->store(), std::byte{0}); }
-  bool set(point p, bool new_state);
+  void clear() { std::ranges::fill(this->store(), std::byte{0U}); }
+  /// Sets or clears an individual pixel.
+  /// \param p The pixel to be set
+  /// \param new_state The desired state of the pixel
+  void set(point p, bool new_state);
+  /// Draws a straight line from p0 to p1.
   /// \param p0  Coordinate of one end of the line
   /// \param p1  Coordinate of the other end of the line
   void line(point p0, point p1);
@@ -123,40 +128,36 @@ public:
 #endif
 
 private:
+  std::uint16_t width_ = 0U;   ///< Width of the bitmap in pixels
+  std::uint16_t height_ = 0U;  ///< Height of the bitmap in pixels
+  std::uint16_t stride_ = 0U;  ///< Number of bytes per row
   std::span<std::byte> store_;
-  std::uint16_t width_ = 0;   ///< Width of the bitmap in pixels
-  std::uint16_t height_ = 0;  ///< Height of the bitmap in pixels
-  std::uint16_t stride_ = 0;  ///< Number of bytes per row
 
-  constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
+  [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
   void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte pattern);
   void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);
 };
 
-inline bool bitmap::set(point const p, bool const new_state) {
+inline void bitmap::set(point const p, bool const new_state) {
   if (p.x < 0 || p.y < 0) {
-    return false;
+    return;
   }
   auto const x = static_cast<unsigned>(p.x);
   auto const y = static_cast<unsigned>(p.y);
   if (x >= width_ || y >= height_) {
-    return false;
+    return;
   }
   auto const index = y * stride_ + x / 8U;
   assert(index < this->actual_store_size());
   auto& b = store_[index];
-  auto const bit = std::byte{0x80} >> (x % 8U);
+  auto const bit = std::byte{0x80U} >> (x % 8U);
   // TODO: Checkout <https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching>
   if (new_state) {
     b |= bit;
   } else {
     b &= ~bit;
   }
-  return true;
 }
-
-std::tuple<std::unique_ptr<std::byte[]>, draw::bitmap> create_bitmap_and_store(std::uint16_t width,
-                                                                               std::uint16_t height);
 
 extern pattern const black;
 extern pattern const white;

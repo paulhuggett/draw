@@ -44,13 +44,17 @@ namespace draw {
 
 class glyph_cache {
 public:
-  glyph_cache() noexcept;
+  glyph_cache(std::span<std::byte> const& store) noexcept;
   [[nodiscard]] bitmap const& get(font const& f, char32_t code_point);
+
+  [[nodiscard]] static constexpr std::size_t get_store_size() noexcept {
+    return std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_font_store_size));
+  }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
-  [[nodiscard]] static constexpr std::size_t get_store_size(font const& f) noexcept {
+  [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {
     std::size_t const stride = (f.widest + 7U) / 8U;
     auto const pixel_height = f.height * 8U;
     return stride * pixel_height;
@@ -58,8 +62,8 @@ private:
   std::size_t store_size_;
 
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
-  std::vector<std::byte> store_;
-  plru_cache<char32_t, bitmap, 8, 2> cache_;
+  std::span<std::byte> store_;
+  plru_cache<char32_t, bitmap, 8U, 2U> cache_;
 };
 
 }  // end namespace draw

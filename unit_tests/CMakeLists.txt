@@ -32,6 +32,7 @@
 add_executable(draw-unit-tests)
 target_sources(draw-unit-tests
   PRIVATE
+    create_bitmap.cpp create_bitmap.hpp
     test_copy.cpp
     test_frame_rect.cpp
     test_iumap.cpp
