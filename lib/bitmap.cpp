@@ -51,7 +51,7 @@
 #include "draw/types.hpp"
 
 #if defined(__clang__) && __clang__
-#define DRAW_NONNULL __nonnull
+#define DRAW_NONNULL _Nonnull
 #else
 #define DRAW_NONNULL
 #endif
