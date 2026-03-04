@@ -2,6 +2,7 @@ version = 1
 
 [[annotations]]
 path = [
+  "README.md",
   "lib/font/sans_font/**/*",
   "include/draw/icubaby.hpp",
   ".github/workflows/*"
