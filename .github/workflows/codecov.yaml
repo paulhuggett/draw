@@ -39,7 +39,8 @@ jobs:
             -B "$BUILD_DIR"                          \
             -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"   \
             -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION" \
-            -D CMAKE_BUILD_TYPE=Debug
+            -D CMAKE_BUILD_TYPE=Debug                \
+            -D DRAW_COVERAGE=Yes
 
       - name: Build
         run: cmake --build "$BUILD_DIR"

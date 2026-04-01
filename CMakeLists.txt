@@ -52,9 +52,10 @@ else()
   set(default_hosted No)
 endif()
 
-option(DRAW_WERROR "Compiler warnings are errors?" No)
-option(DRAW_UNIT_TESTS "Add unit tests?" Yes)
+option(DRAW_COVERAGE "Enable code coverage" No)
 option(DRAW_HOSTED "Is this a hosted environment?" ${default_hosted})
+option(DRAW_UNIT_TESTS "Add unit tests?" Yes)
+option(DRAW_WERROR "Compiler warnings are errors?" No)
 
 if (NOT Python_EXECUTABLE)
   find_package (Python3 COMPONENTS Interpreter)
@@ -126,9 +127,16 @@ function (setup_target target)
     $<$<CXX_COMPILER_ID:MSVC>:${msvc_options}>
   )
 
+  # werror
   target_compile_options(${target} PRIVATE
     $<$<AND:$<BOOL:${DRAW_WERROR}>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Werror>
     $<$<AND:$<BOOL:${DRAW_WERROR}>,$<CXX_COMPILER_ID:MSVC>>:/WX>
+  )
+
+  # coverage
+  target_compile_options(${target} PRIVATE
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<CXX_COMPILER_ID:GNU>>:-fprofile-arcs -ftest-coverage>
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping> 
   )
 
   set(ld64_link_options LINKER:-map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
