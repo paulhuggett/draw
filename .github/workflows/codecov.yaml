@@ -1,0 +1,76 @@
+name: CodeCov
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  codecov:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: build_codecov
+      GCC_VERSION: 13
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@58077d3c7e43986b6b15fba718e8ea69e387dfcc # v2.15.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: "True"
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake "g++-$GCC_VERSION" lcov ninja-build
+
+      - name: Configure Build
+        run: |
+          cmake                                      \
+            -G Ninja                                 \
+            -S .                                     \
+            -B "$BUILD_DIR"                          \
+            -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"   \
+            -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION" \
+            -D CMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build "$BUILD_DIR"
+
+      - name: Run the Test and Demo Binaries
+        run: |
+          ctest                      \
+            --test-dir "$BUILD_DIR"  \
+            --output-junit junit.xml \
+            --parallel $(nproc)      \
+            --output-on-failure      \
+            --verbose
+
+      - name: Collect the Coverage
+        run: |
+          set -x
+          lcov                              \
+            --capture                       \
+            --output-file coverage.info     \
+            --directory "$BUILD_DIR"        \
+            --gcov-tool "gcov-$GCC_VERSION" \
+            --ignore-errors mismatch
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: coverage.info
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
