@@ -6,7 +6,8 @@
 //* |_|_|_| |_|\___| *
 //*                  *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,9 +27,8 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+
 // DUT
 #include "draw/bitmap.hpp"
 
@@ -38,6 +38,7 @@
 
 // Local include
 #include "create_bitmap.hpp"
+#include "rect.hpp"
 
 using testing::ElementsAre;
 using namespace draw::literals;
@@ -56,6 +57,7 @@ TEST(Line, ShortHorizontal) {
                                        0b00000000_b, 0b00000000_b,  // [6]
                                        0b00000000_b, 0b00000000_b   // [7]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 5, .left = 2, .bottom = 5, .right = 11}));
 }
 
 TEST(Line, VeryShortHorizontal) {
@@ -70,6 +72,7 @@ TEST(Line, VeryShortHorizontal) {
                                        0b00000000_b, 0b00000000_b,  // [6]
                                        0b00000000_b, 0b00000000_b   // [7]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 5, .left = 2, .bottom = 5, .right = 6}));
 }
 
 TEST(Line, VeryShortHorizontalInTheFinalByte) {
@@ -80,6 +83,7 @@ TEST(Line, VeryShortHorizontalInTheFinalByte) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00111110_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 3, .left = 10, .bottom = 3, .right = 14}));
 }
 
 TEST(Line, LongHorizontal) {
@@ -90,6 +94,7 @@ TEST(Line, LongHorizontal) {
                                        0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 1, .left = 2, .bottom = 1, .right = 21}));
 }
 
 TEST(Line, OverLongHorizontal) {
@@ -101,6 +106,7 @@ TEST(Line, OverLongHorizontal) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 1, .left = 2, .bottom = 1, .right = 15}));
 }
 
 TEST(Line, OverLongHorizontalLastRow) {
@@ -113,6 +119,7 @@ TEST(Line, OverLongHorizontalLastRow) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b11111111_b, 0b11111111_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 3, .left = 0, .bottom = 3, .right = 15}));
 }
 
 TEST(Line, HorizontalClippedXTooLarge) {
@@ -123,6 +130,7 @@ TEST(Line, HorizontalClippedXTooLarge) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), std::nullopt);
 }
 
 TEST(Line, HorizontalClippedYTooLarge) {
@@ -133,6 +141,7 @@ TEST(Line, HorizontalClippedYTooLarge) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), std::nullopt);
 }
 
 TEST(Line, Vertical) {
@@ -147,6 +156,7 @@ TEST(Line, Vertical) {
                                        0b00000000_b, 0b00000000_b,  // [6]
                                        0b00000000_b, 0b00000000_b   // [7]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 2, .bottom = 5, .right = 2}));
 }
 
 TEST(Line, LastVerticalColumn) {
@@ -161,6 +171,7 @@ TEST(Line, LastVerticalColumn) {
                                        0b00000000_b, 0b00000001_b,  // [6]
                                        0b00000000_b, 0b00000000_b   // [7]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 15, .bottom = 6, .right = 15}));
 }
 
 TEST(Line, VerticalClippedXTooLarge) {
@@ -171,6 +182,7 @@ TEST(Line, VerticalClippedXTooLarge) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), std::nullopt);
 }
 
 TEST(Line, VerticalClippedYTooLarge) {
@@ -181,6 +193,7 @@ TEST(Line, VerticalClippedYTooLarge) {
                                        0b00000000_b, 0b00000000_b,  // [2]
                                        0b00000000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), std::nullopt);
 }
 
 TEST(Line, Diagonal1) {
@@ -191,6 +204,7 @@ TEST(Line, Diagonal1) {
                                        0b00000000_b, 0b11111000_b,  // [2]
                                        0b00000000_b, 0b00000111_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 3, .right = 15}));
 }
 
 TEST(Line, Diagonal2) {
@@ -201,6 +215,7 @@ TEST(Line, Diagonal2) {
                                        0b00011111_b, 0b00000000_b,  // [2]
                                        0b11100000_b, 0b00000000_b   // [3]
                                        ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 3, .right = 15}));
 }
 
 }  // end anonymous namespace

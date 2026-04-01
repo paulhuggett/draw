@@ -6,7 +6,8 @@
 //* | .__/ \__,_|_|_| |_|\__| |_|  \___|\___|\__| *
 //* |_|                                           *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,9 +27,8 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
+
 // DUT
 #include "draw/bitmap.hpp"
 

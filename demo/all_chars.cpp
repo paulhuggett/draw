@@ -6,7 +6,8 @@
 //*  \__,_|_|_|  \___|_| |_|\__,_|_|  |___/ *
 //*                                         *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include <vector>
@@ -38,12 +37,12 @@
 #include "draw/sans32.hpp"
 #include "draw/types.hpp"
 
+namespace {
+
 using draw::bitmap;
 using draw::coordinate;
 using draw::font;
 using draw::point;
-
-namespace {
 
 std::vector<char32_t> sorted_code_points(font const& f) {
   std::vector<char32_t> code_points;
@@ -56,16 +55,16 @@ std::vector<char32_t> sorted_code_points(font const& f) {
 }  // end anonymous namespace
 
 int main() {
-  constexpr auto frame_width = coordinate{128};
-  constexpr auto frame_height = coordinate{32};
+  constexpr auto frame_width = std::uint16_t{128U};
+  constexpr auto frame_height = std::uint16_t{32U};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap bm{frame_store, frame_width, frame_height};
-  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
   draw::glyph_cache gc{glyph_cache_store};
 
   point pos;
   for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {
-    auto const width = bm.char_width(font, code_point);
+    auto const width = bitmap::char_width(font, code_point);
     if (pos.x + width > bm.width()) {
       pos.x = 0;
       pos.y += font.height * 8;

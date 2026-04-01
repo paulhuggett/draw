@@ -6,7 +6,8 @@
 //* |_|  \___|\___|\__| *
 //*                     *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,36 +27,29 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
-#include <gtest/gtest.h>
 
-#include "draw/bitmap.hpp"
+// DUT
 #include "draw/types.hpp"
 
-namespace draw {
+// Google Test
+#include <gtest/gtest.h>
 
-void PrintTo(rect const& r, std::ostream* os);
-void PrintTo(rect const& r, std::ostream* os) {
-  *os << "{.top=" << r.top << ",.left=" << r.left << ",.bottom=" << r.bottom << ",.right=" << r.right << '}';
-}
+// Local includes
+#include "rect.hpp"
 
-}  // namespace draw
 namespace {
 
 TEST(Rect, Null) {
   constexpr draw::rect r;
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
-  EXPECT_TRUE(r.empty());
 }
 
 TEST(Rect, InsetEmpty) {
   constexpr draw::rect r = draw::rect{}.inset(1, 1);
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
-  EXPECT_TRUE(r.empty());
 }
 
 TEST(Rect, InsetSmaller) {
@@ -63,7 +57,6 @@ TEST(Rect, InsetSmaller) {
   EXPECT_EQ(r, (draw::rect{.top = 11, .left = 11, .bottom = 19, .right = 19}));
   EXPECT_EQ(r.width(), 8);
   EXPECT_EQ(r.height(), 8);
-  EXPECT_FALSE(r.empty());
 }
 
 TEST(Rect, InsetLarger1) {
@@ -71,7 +64,6 @@ TEST(Rect, InsetLarger1) {
   EXPECT_EQ(r, (draw::rect{.top = 9, .left = 9, .bottom = 21, .right = 21}));
   EXPECT_EQ(r.width(), 12);
   EXPECT_EQ(r.height(), 12);
-  EXPECT_FALSE(r.empty());
 }
 
 TEST(Rect, InsetLarger2) {
@@ -79,7 +71,6 @@ TEST(Rect, InsetLarger2) {
   EXPECT_EQ(r, (draw::rect{.top = 5, .left = 5, .bottom = 25, .right = 25}));
   EXPECT_EQ(r.width(), 20);
   EXPECT_EQ(r.height(), 20);
-  EXPECT_FALSE(r.empty());
 }
 
 TEST(Rect, InsetToEmpty) {
@@ -87,7 +78,14 @@ TEST(Rect, InsetToEmpty) {
   EXPECT_EQ(r, (draw::rect{.top = 11, .left = 11, .bottom = 19, .right = 19}));
   EXPECT_EQ(r.width(), 8);
   EXPECT_EQ(r.height(), 8);
-  EXPECT_FALSE(r.empty());
 }
 
+TEST(Rect, Union) {
+  constexpr auto r1 = draw::rect{.top = 1, .left = 1, .bottom = 2, .right = 2};
+  constexpr auto r2 = draw::rect{.top = 2, .left = 2, .bottom = 3, .right = 3};
+  constexpr auto r3 = r1.union_rect(r2);
+  EXPECT_EQ(r3, (draw::rect{.top = 1, .left = 1, .bottom = 3, .right = 3}));
+  constexpr auto r4 = r2.union_rect(r1);
+  EXPECT_EQ(r4, (draw::rect{.top = 1, .left = 1, .bottom = 3, .right = 3}));
+}
 }  // end anonymous namespace

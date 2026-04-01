@@ -6,7 +6,8 @@
 //* | .__/|_|_|   \__,_|  \___\__,_|\___|_| |_|\___| *
 //* |_|                                              *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 /// \file plru_cache.hpp
@@ -71,18 +70,19 @@ struct aligned_storage {
 #else
   [[nodiscard]] constexpr T& reference() noexcept { return *std::bit_cast<T*>(&v[0]); }
   [[nodiscard]] constexpr T const& reference() const noexcept { return *std::bit_cast<T const*>(&v[0]); }
-#endif // __cpp_explicit_this_parameter
+#endif  // __cpp_explicit_this_parameter
   // NOLINTNEXTLINE(hicpp-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,misc-non-private-member-variables-in-classes)
   alignas(T) std::byte v[sizeof(T)];
 };
 
-template <std::size_t Ways> class tree {
+template <std::size_t Ways>
+class tree {
 public:
   /// Flip the access bits of the tree to indicate that \p way is the most recently used member.
   void touch(std::size_t const way) noexcept {
     assert(way < Ways && "Way index is too large");
-    auto node = std::size_t{0};
-    auto start = std::size_t{0};
+    auto node = std::size_t{0U};
+    auto start = std::size_t{0U};
     auto end = Ways;
     while (node < Ways - 1U) {
       auto const mid = std::midpoint(start, end);
@@ -141,10 +141,10 @@ template <std::unsigned_integral Key, unsigned SetBits, unsigned Ways>
 struct match_finder {
   using tagged_key_type = tagged_key<Key, SetBits>;
 
-  /// \return The lane index [0..Ways) if a match is found, or Ways if no match
+  /// \return The lane index [0,Ways) if a match is found, or Ways if no match
   static constexpr std::size_t find(tagged_key_type const tk,
                                     std::array<tagged_key_type, Ways> const& values) noexcept {
-    auto index = std::size_t{0};
+    auto index = std::size_t{0U};
     for (; index < Ways; ++index) {
       if (values[index] == tk) {
         break;
@@ -174,7 +174,7 @@ struct match_finder<Key, SetBits, 4> {
 
 template <std::unsigned_integral Key, unsigned SetBits>
   requires(std::is_same_v<typename tagged_key<Key, SetBits>::value_type, std::uint16_t>)
-struct match_finder<Key, SetBits, 8> {
+struct match_finder<Key, SetBits, 8U> {
   using tagged_key_type = tagged_key<Key, SetBits>;
 
   static constexpr std::size_t find(tagged_key_type const new_tag,
@@ -255,7 +255,7 @@ public:
 
   [[nodiscard]] constexpr bool contains(Key key) const noexcept { return find_matching(tagged_key_type{key}) < Ways; }
   constexpr void clear() noexcept {
-    for (auto index = std::size_t{0}; index < Ways; ++index) {
+    for (auto index = std::size_t{0U}; index < Ways; ++index) {
       if (keys_[index].valid()) {
         std::destroy_at(&values_[index].reference());
       }
@@ -273,7 +273,7 @@ public:
   }
   [[nodiscard]] constexpr Key key(std::size_t const index) const noexcept {
     assert(index < keys_.size());
-    return (keys_[index].get() & ~0x01U) << (SetBits - 1);  // this not the entire key!
+    return (keys_[index].get() & ~0x01U) << (SetBits - 1U);  // this not the entire key!
   }
   [[nodiscard]] constexpr MappedType const& value(std::size_t const index) const noexcept {
     assert(index < values_.size());
@@ -335,7 +335,7 @@ public:
     T& second;
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
     constexpr operator std::pair<Key const, std::remove_const_t<T>>() const noexcept { return {first, second}; }
-    constexpr bool operator==(proxy const&) const noexcept = default;
+    constexpr friend bool operator==(proxy const&, proxy const&) noexcept = default;
     constexpr bool operator==(std::pair<Key const, std::remove_const_t<T>> const& other) const noexcept {
       return first == other.first && second == other.second;
     }
@@ -357,7 +357,7 @@ public:
     constexpr explicit iterator_type(owner_type* const owner) noexcept : owner_{owner} {}
     constexpr iterator_type(owner_type* const owner, std::pair<std::size_t, std::size_t> const& indexes) noexcept
         : owner_{owner}, set_index_{indexes.first}, way_index_{indexes.second} {}
-    constexpr bool operator==(iterator_type const& other) const noexcept = default;
+    friend constexpr bool operator==(iterator_type const& lhs, iterator_type const& rhs) noexcept = default;
 
     constexpr reference operator*() const
       requires(std::is_const_v<T>)
@@ -413,7 +413,7 @@ public:
   plru_cache& operator=(plru_cache const&) noexcept = delete;
   plru_cache& operator=(plru_cache&&) noexcept = delete;
 
-  bool operator==(plru_cache const&) const = delete;
+  friend bool operator==(plru_cache const&, plru_cache const&) = delete;
 
   /// \tparam MissFn  The type of the function called to instantiate a value in the cache.
   /// \tparam ValidFn  The type of the function called to check the validity of a value in the cache.
@@ -481,7 +481,7 @@ public:
   [[nodiscard]] static constexpr std::size_t max_size() noexcept { return sets * ways; }
   /// \returns The number of elements held by the cache.
   [[nodiscard]] constexpr std::size_t size() const noexcept {
-    return std::ranges::fold_left(sets_, std::size_t{0},
+    return std::ranges::fold_left(sets_, std::size_t{0U},
                                   [](std::size_t acc, auto const& set) { return acc + std::size(set); });
   }
 
@@ -499,8 +499,8 @@ private:
 
   [[nodiscard]] constexpr std::pair<std::size_t, std::size_t> first_valid() const {
     // Search for the first in-use slot.
-    auto set = std::size_t{0};
-    auto way = std::size_t{0};
+    auto set = std::size_t{0U};
+    auto way = std::size_t{0U};
     while (!sets_[set].valid(way)) {
       ++way;
       if (way >= plru_cache::ways) {
@@ -508,7 +508,7 @@ private:
         if (set >= plru_cache::sets) {
           break;
         }
-        way = 0;
+        way = 0U;
       }
     }
     return {set, way};

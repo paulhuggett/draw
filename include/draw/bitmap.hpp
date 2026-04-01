@@ -6,7 +6,8 @@
 //* |_.__/|_|\__|_| |_| |_|\__,_| .__/  *
 //*                             |_|     *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_BITMAP_HPP
 #define DRAW_BITMAP_HPP
@@ -41,9 +40,8 @@
 #include <memory>
 #include <ranges>
 #include <span>
-#include <tuple>
 
-#include "types.hpp"
+#include "draw/types.hpp"
 
 #ifndef DRAW_HOSTED
 #define DRAW_HOSTED (0)
@@ -69,12 +67,15 @@ public:
   constexpr bitmap(std::span<std::byte> const& store, std::uint16_t const width, std::uint16_t const height) noexcept
       : bitmap(store, width, height, required_stride(width)) {}
 
-  static constexpr std::uint16_t required_stride(std::uint16_t const width) noexcept {
+  [[nodiscard]] static constexpr std::uint16_t required_stride(std::uint16_t const width) noexcept {
     assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
     return static_cast<std::uint16_t>((width + 7U) / 8U);
   }
   /// Returns the store size required for a bitmap with the supplied dimensions.
-  static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
+  /// \param width  The desired width of the bitmap in pixels.
+  /// \param height  The desired height of the bitmap in pixels.
+  /// \returns The size, in bytes, of the required frame store for a bitmap with the supplied dimensions.
+  [[nodiscard]] static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
     return required_stride(width) * static_cast<unsigned>(height);
   }
@@ -85,7 +86,7 @@ public:
   /// Sets or clears an individual pixel.
   /// \param p The pixel to be set
   /// \param new_state The desired state of the pixel
-  void set(point p, bool new_state);
+  constexpr void set(point p, bool new_state);
   /// Draws a straight line from p0 to p1.
   /// \param p0  Coordinate of one end of the line
   /// \param p1  Coordinate of the other end of the line
@@ -104,22 +105,28 @@ public:
   /// \param gc  The glyph cache
   /// \param f  The font in which the character will be rendered
   /// \param s  The UTF-8 encoded string to be drawn
-  /// \param pos The position for the first of the run of glyphs
+  /// \param pos  The position for the first of the run of glyphs
+  /// \returns  The origin position \p pos with the x coordinate increased by the width of all the rendered glyphs.
   point draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos);
   /// Returns the character width of the specified character.
   ///
   /// \param f  A font instance
   /// \param code_point  The code point specifying the glyph to be drawn
   /// \returns The width of the specified glyph
-  std::uint16_t char_width(font const& f, char32_t code_point);
+  [[nodiscard]] static std::uint16_t char_width(font const& f, char32_t code_point);
 
   [[nodiscard]] constexpr std::uint16_t width() const noexcept { return width_; }
   [[nodiscard]] constexpr std::uint16_t height() const noexcept { return height_; }
   [[nodiscard]] constexpr std::uint16_t stride() const noexcept { return stride_; }
   [[nodiscard]] constexpr rect bounds() const noexcept {
-    return {
-        .top = 0, .left = 0, .bottom = static_cast<coordinate>(height()), .right = static_cast<coordinate>(width())};
+    return {.top = 0,
+            .left = 0,
+            .bottom = static_cast<coordinate>(height() - 1U),
+            .right = static_cast<coordinate>(width() - 1U)};
   }
+  [[nodiscard]] constexpr std::optional<rect> dirty() const noexcept { return dirty_; }
+  constexpr void clean() noexcept { dirty_.reset(); }
+
   [[nodiscard]] constexpr std::span<std::byte const> store() const noexcept { return store_; }
   [[nodiscard]] constexpr std::span<std::byte> store() noexcept { return store_; }
 
@@ -128,17 +135,23 @@ public:
 #endif
 
 private:
-  std::uint16_t width_ = 0U;   ///< Width of the bitmap in pixels
-  std::uint16_t height_ = 0U;  ///< Height of the bitmap in pixels
-  std::uint16_t stride_ = 0U;  ///< Number of bytes per row
-  std::span<std::byte> store_;
+  std::uint16_t width_ = 0U;    ///< Width of the bitmap in pixels
+  std::uint16_t height_ = 0U;   ///< Height of the bitmap in pixels
+  std::uint16_t stride_ = 0U;   ///< Number of bytes per row
+  std::span<std::byte> store_;  ///< The backing store containing the bitmap's pixel data
+  std::optional<rect> dirty_;   ///< The area of the bitmap modified since the last call to clean(), if any.
 
   [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
   void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte pattern);
   void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);
+
+  /// Adds the supplied rectangle to the "dirty" area.
+  constexpr void mark_dirty(rect const& modified) noexcept {
+    dirty_ = dirty_ ? dirty_->union_rect(modified) : modified;
+  }
 };
 
-inline void bitmap::set(point const p, bool const new_state) {
+constexpr void bitmap::set(point const p, bool const new_state) {
   if (p.x < 0 || p.y < 0) {
     return;
   }
@@ -157,6 +170,8 @@ inline void bitmap::set(point const p, bool const new_state) {
   } else {
     b &= ~bit;
   }
+
+  this->mark_dirty({.top = p.y, .left = p.x, .bottom = p.y, .right = p.x});
 }
 
 extern pattern const black;

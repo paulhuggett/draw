@@ -6,7 +6,8 @@
 //*  \__, |_|\__, | .__/|_| |_|  \___\__,_|\___|_| |_|\___| *
 //*  |___/   |___/|_|                                       *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,14 +27,13 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_GLYPH_CACHE_HPP
 #define DRAW_GLYPH_CACHE_HPP
 
 #include <algorithm>
 #include <cstddef>
+#include <span>
 #include <vector>
 
 #include "bitmap.hpp"
@@ -44,29 +44,38 @@ namespace draw {
 
 class glyph_cache {
 public:
-  glyph_cache(std::span<std::byte> const& store) noexcept;
+  explicit constexpr glyph_cache(std::span<std::byte> const& store) noexcept
+      : store_size_{get_store_size()}, store_{store} {
+    assert(store_.size_bytes() >= get_size());
+  }
+
+  /// Returns a bitmap containing the rendered glyph from the supplied font.
   [[nodiscard]] bitmap const& get(font const& f, char32_t code_point);
 
+  /// Returns the number of bytes that are required for the graph-cache storage.
   [[nodiscard]] static constexpr std::size_t get_size() noexcept {
     return decltype(cache_)::max_size() * get_store_size();
   }
 
 private:
+  /// Renders an individual glyph into the supplied bitmap.
+  [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
+
   [[nodiscard]] static constexpr std::size_t get_store_size() noexcept {
     return std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_font_store_size));
   }
-  /// Renders an individual glyph into the supplied bitmap.
-  [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
+
+  /// Returns the number of bytes required for the largest glyph in the supplied font.
   [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {
     std::size_t const stride = (f.widest + 7U) / 8U;
     auto const pixel_height = f.height * 8U;
     return stride * pixel_height;
   }
-  std::size_t store_size_;
 
+  std::size_t store_size_;
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::span<std::byte> store_;
-  plru_cache<char32_t, bitmap, 8U, 2U> cache_;
+  plru_cache<std::uint32_t, bitmap, 8U, 2U> cache_;
 };
 
 }  // end namespace draw

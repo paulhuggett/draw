@@ -27,7 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
 //===----------------------------------------------------------------------===//
 #include "draw/bitmap.hpp"
 
@@ -149,7 +148,7 @@ void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte con
 
     // Copying a byte at a time.
     while (src_x + 8U <= src_x_end) {
-      transfer(dest, std::byte{0xFF}, ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m), mode);
+      transfer(dest, std::byte{0xFFU}, ((*src & ~mask_high) << (8U - m)) | ((*(src + 1) & mask_high) >> m), mode);
       trace("{:08b}'", std::to_underlying(*dest));
 
       ++dest;
@@ -160,8 +159,8 @@ void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte con
   }
   // The final partial byte. We have fewer than eight bits of the source remaining.
   assert(src_x <= src_x_end);
-  if (auto const remaining = src_x_end - src_x; remaining > 0) {
-    assert(remaining <= 8);
+  if (auto const remaining = src_x_end - src_x; remaining > 0U) {
+    assert(remaining <= 8U);
 
     auto v = 0_b;
     if (remaining > m) {
@@ -186,7 +185,7 @@ void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte con
   assert(src_x_init <= src_x_end);
   if (src_x_init % 8U == dest_x % 8U) {
     copy_row_aligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
-  } else if (src_x_init + 8 > src_x_end) {
+  } else if (src_x_init + 8U > src_x_end) {
     copy_row_tiny(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
   } else {
     copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
@@ -265,6 +264,8 @@ void bitmap::copy(bitmap const& source, point const dest_pos, transfer_mode cons
   }
 
   auto dest_y = static_cast<unsigned>(std::max(dest_pos.y, coordinate{0}));
+  auto const dirty_top = dest_y;
+
   auto const src_y_init = dest_pos.y < 0 ? static_cast<unsigned>(-dest_pos.y) : 0U;
   auto const src_y_end = std::min(static_cast<unsigned>(source.height_), src_y_init + height_ - dest_y);
 
@@ -277,6 +278,11 @@ void bitmap::copy(bitmap const& source, point const dest_pos, transfer_mode cons
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
     copy_row(src_x_init, src_x_end, &source.store_[src_y * source.stride_], dest_x, &store_[dest_y * stride_], mode);
   }
+
+  this->mark_dirty({.top = static_cast<coordinate>(dirty_top),
+                    .left = static_cast<coordinate>(dest_x),
+                    .bottom = static_cast<coordinate>(dest_y - 1U),
+                    .right = static_cast<coordinate>(dest_x + src_x_end - src_x_init - 1)});
 }
 
 void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t const y, std::byte const pattern) {
@@ -292,6 +298,11 @@ void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t c
   x1 = std::min(x1, static_cast<std::uint16_t>(width_ - 1U));
   auto it = store_.begin() + y * stride_ + x0 / 8U;
   assert(it < store_.end() && "iterator is not within the bitmap");
+
+  this->mark_dirty({.top = static_cast<coordinate>(y),
+                    .left = static_cast<coordinate>(x0),
+                    .bottom = static_cast<coordinate>(y),
+                    .right = static_cast<coordinate>(x1)});
 
   // Masks used to set the least- and most-significant bits of a byte for the line's left- and right-most pixels
   // respectively.
@@ -343,6 +354,11 @@ void bitmap::line_vertical(std::uint16_t const x, std::uint16_t y0, std::uint16_
     store_[index] |= bits;
     index += stride_;
   }
+
+  this->mark_dirty(rect{.top = static_cast<coordinate>(y0),
+                        .left = static_cast<coordinate>(x),
+                        .bottom = static_cast<coordinate>(y1 - 1U),
+                        .right = static_cast<coordinate>(x)});
 }
 
 void bitmap::line(point p0, point p1) {
@@ -437,7 +453,8 @@ void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point
   this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
 }
 
-template <typename DrawFn> static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
+template <typename DrawFn>
+static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
   auto x = coordinate{0};
 
   std::optional<char32_t> prev_cp;
@@ -471,7 +488,7 @@ point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, 
 }
 
 coordinate string_width(font const& f, std::u8string_view s) {
-  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) {
+  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) constexpr {
     // do nothing
   });
 }

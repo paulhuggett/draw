@@ -6,7 +6,8 @@
 //*  \__,_|_|_| |_|\__\___|\__, |\___|_|    *
 //*                        |___/            *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_UINTEGER_HPP
 #define DRAW_UINTEGER_HPP
@@ -40,30 +39,35 @@ namespace draw {
 
 /// \brief Yields the smallest unsigned integral type with at least \p N bits.
 template <std::size_t N>
-  requires(N <= 64)
+  requires(N <= 64U)
 struct uinteger {
   /// The type of an unsigned integral with at least \p N bits.
-  using type = typename uinteger<N + 1>::type;
+  using type = typename uinteger<N + 1U>::type;
 };
 /// \brief A helper type for convenient use of uinteger<N>::type.
-template <std::size_t N> using uinteger_t = typename uinteger<N>::type;
+template <std::size_t N>
+using uinteger_t = typename uinteger<N>::type;
 /// \brief Yields an unsigned integral type of 8 bits or more.
-template <> struct uinteger<8> {
+template <>
+struct uinteger<8U> {
   /// Smallest unsigned integer type with width of at least 8 bits.
   using type = std::uint_least8_t;
 };
 /// \brief Yields an unsigned integral type of 16 bits or more.
-template <> struct uinteger<16> {
+template <>
+struct uinteger<16U> {
   /// Smallest unsigned integer type with width of at least 16 bits.
   using type = std::uint_least16_t;
 };
 /// \brief Yields an unsigned integral type of 32 bits or more.
-template <> struct uinteger<32> {
+template <>
+struct uinteger<32U> {
   /// Smallest unsigned integer type with width of at least 32 bits.
   using type = std::uint_least32_t;
 };
 /// \brief Yields an unsigned integral type of 64 bits or more.
-template <> struct uinteger<64> {
+template <>
+struct uinteger<64U> {
   /// Smallest unsigned integer type with width of at least 64 bits.
   using type = std::uint_least64_t;
 };

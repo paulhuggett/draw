@@ -6,7 +6,8 @@
 //* |_|\__,_|_| |_| |_|\__,_| .__/  *
 //*                         |_|     *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 /// \file iumap.hpp
@@ -110,7 +109,8 @@ public:
   using pointer = value_type*;
   using const_pointer = value_type const*;
 
-  template <typename T> class sentinel {};
+  template <typename T>
+  class sentinel {};
 
   template <typename T>
     requires(std::is_same_v<T, member> || std::is_same_v<T, member const>)
@@ -263,9 +263,11 @@ public:
   /// inserts elements
   std::pair<iterator, bool> insert(value_type const& value);
   /// inserts an element or assigns to the current element if the key already exists
-  template <typename M> std::pair<iterator, bool> insert_or_assign(Key const& key, M&& value);
+  template <typename M>
+  std::pair<iterator, bool> insert_or_assign(Key const& key, M&& value);
   /// inserts in-place if the key does not exist, does nothing if the key exists
-  template <typename... Args> std::pair<iterator, bool> try_emplace(Key const& key, Args&&... args);
+  template <typename... Args>
+  std::pair<iterator, bool> try_emplace(Key const& key, Args&&... args);
   /// erases elements
   iterator erase(iterator pos);
 

@@ -6,7 +6,7 @@
 //*  \__|_|  \__,_|\___\___|_|    *
 //*                               *
 //===----------------------------------------------------------------------===//
-// SPDX-FileCopyrightText: Copyright © 2026 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
 // SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -27,7 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_TRACER_HPP
 #define DRAW_TRACER_HPP

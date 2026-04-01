@@ -27,7 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
 //===----------------------------------------------------------------------===//
 #include "draw/glyph_cache.hpp"
 
@@ -37,6 +36,7 @@
 #include <span>
 
 #include "draw/bitmap.hpp"
+#include "draw/icubaby.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 
@@ -50,18 +50,16 @@ namespace {
 
 namespace draw {
 
-glyph_cache::glyph_cache(std::span<std::byte> const& store) noexcept : store_size_{get_store_size()}, store_{store} {
-  assert(store_.size_bytes() >= get_size());
-}
-
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
-  return cache_.access(code_point, [this, &f](char32_t const key, std::size_t const index) {
+  auto const key =
+      (static_cast<std::uint32_t>(f.id) << icubaby::code_point_bits) | static_cast<std::uint32_t>(code_point);
+  return cache_.access(key, [this, &f, code_point](std::uint32_t const _, std::size_t const index) {
     // Called when a glyph was not found in the cache.
     using difference_type = decltype(store_)::difference_type;
     auto const begin = std::begin(store_) + static_cast<difference_type>(index * store_size_);
     auto const end = begin + static_cast<difference_type>(store_size_);
     assert(end <= std::end(store_));
-    return glyph_cache::render(f, key, std::span{begin, end});
+    return glyph_cache::render(f, code_point, std::span{begin, end});
   });
 }
 

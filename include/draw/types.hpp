@@ -6,7 +6,8 @@
 //*  \__|\__, | .__/ \___||___/ *
 //*      |___/|_|               *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,12 +27,11 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_TYPES_HPP
 #define DRAW_TYPES_HPP
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -61,11 +61,17 @@ struct rect {
   coordinate bottom = 0;
   coordinate right = 0;
 
-  constexpr bool operator==(rect const&) const noexcept = default;
+  constexpr friend bool operator==(rect const&, rect const&) noexcept = default;
 
   [[nodiscard]] constexpr coordinate width() const noexcept { return right > left ? right - left : 0; }
   [[nodiscard]] constexpr coordinate height() const noexcept { return bottom > top ? bottom - top : 0; }
-  [[nodiscard]] constexpr bool empty() const noexcept { return bottom <= top || right <= left; }
+
+  [[nodiscard]] constexpr rect union_rect(rect const& other) const noexcept {
+    return {.top = std::min(top, other.top),
+            .left = std::min(left, other.left),
+            .bottom = std::max(bottom, other.bottom),
+            .right = std::max(right, other.right)};
+  }
 
   /// Shrinks or expands the rectangle.
   ///

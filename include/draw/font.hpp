@@ -6,7 +6,8 @@
 //* |_|  \___/|_| |_|\__| *
 //*                       *
 //===----------------------------------------------------------------------===//
-// Copyright © 2025 Paul Bowen-Huggett
+// SPDX-FileCopyrightText: Copyright © 2025 Paul Bowen-Huggett
+// SPDX-License-Identifier: MIT
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,8 +27,6 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-// SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #ifndef DRAW_FONT_HPP
 #define DRAW_FONT_HPP
@@ -45,13 +44,13 @@
 
 namespace draw {
 
-constexpr auto white_square = std::uint32_t{0x25A1};
+constexpr auto white_square = std::uint32_t{0x25A1U};
 
 struct kerning_pair {
   /// Code point of the preceding glyph
-  std::uint32_t preceding : 21 = 0;
-  std::uint32_t pad : 3 = 0;
-  std::uint32_t distance : 8 = 0;
+  std::uint32_t preceding : 21 = 0U;
+  std::uint32_t pad : 3 = 0U;
+  std::uint32_t distance : 8 = 0U;
 };
 
 // The glyphs in a font are always a multiple of 8 pixels tall as given by the font's 'height'
@@ -61,15 +60,18 @@ struct kerning_pair {
 // column of pixels in the font. The least significant bit in each byte holds the pixel value for
 // the smallest y position.
 struct font {
-  std::uint8_t id = 0;
-  std::uint8_t baseline = 0;
-  std::uint8_t widest = 0;
-  std::uint8_t height : 4 = 0;  // in bytes rather than pixels.
-  std::uint8_t spacing : 4 = 0;
+  std::uint8_t id = 0U;
+  std::uint8_t baseline = 0U;
+  std::uint8_t widest = 0U;
+  std::uint8_t height : 4 = 0U;  // in bytes rather than pixels.
+  std::uint8_t spacing : 4 = 0U;
 
   using kerning_pairs = std::span<kerning_pair const>;
   using bytes = std::span<std::byte const>;
   using glyph = std::tuple<kerning_pairs, bytes>;
+  // TODO: Use a perfect hash function. Use the exact glyph count.
+  using glyph_map = iumap<std::uint32_t, glyph, 256U>;
+  glyph_map glyphs;
 
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
     auto const& bitmap = std::get<bytes>(g);
@@ -88,10 +90,6 @@ struct font {
     }
     return &pos->second;
   }
-
-  // TODO: Use a perfect hash function.
-  using glyph_map = iumap<std::uint32_t, glyph, 256>;
-  glyph_map glyphs;
 };
 
 constexpr std::array all_fonts{std::cref(sans16), std::cref(sans32)};
