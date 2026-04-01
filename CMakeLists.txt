@@ -138,6 +138,10 @@ function (setup_target target)
     $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<CXX_COMPILER_ID:GNU>>:-fprofile-arcs -ftest-coverage>
     $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping> 
   )
+  target_link_options(${target} PRIVATE
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<CXX_COMPILER_ID:GNU>>:-fprofile-arcs -ftest-coverage>
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping> 
+  )
 
   set(ld64_link_options LINKER:-map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
   set(ld_link_options LINKER:-Map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
