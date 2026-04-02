@@ -82,18 +82,13 @@ struct rect {
   /// \param dy  The distance by which the top position is incremented and the bottom decremented
   /// \returns  The new rectangle
   [[nodiscard]] constexpr rect inset(coordinate dx, coordinate dy) const noexcept {
-    auto t = top + dy;
-    auto l = left + dx;
-    auto b = bottom - dy;
-    auto r = right - dy;
-    if (b <= t || r <= l) {
-      t = l = b = r = 0;
-    }
+    dy = std::min(dy, static_cast<coordinate>(height() / 2));
+    dx = std::min(dx, static_cast<coordinate>(width() / 2));
     return {
-        .top = static_cast<coordinate>(t),
-        .left = static_cast<coordinate>(l),
-        .bottom = static_cast<coordinate>(b),
-        .right = static_cast<coordinate>(r),
+        .top = static_cast<coordinate>(top + dy),
+        .left = static_cast<coordinate>(left + dx),
+        .bottom = static_cast<coordinate>(bottom - dy),
+        .right = static_cast<coordinate>(right - dy),
     };
   }
 };
