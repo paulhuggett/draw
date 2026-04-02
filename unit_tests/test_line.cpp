@@ -97,6 +97,17 @@ TEST(Line, LongHorizontal) {
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 1, .left = 2, .bottom = 1, .right = 21}));
 }
 
+TEST(Line, LongHorizontalReverse) {
+  auto [store, bmp] = create_bitmap_and_store(24U, 4U);
+  bmp.line(draw::point{21, 1}, draw::point{2, 1});
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
+                                       0b00111111_b, 0b11111111_b, 0b11111100_b,  // [1]
+                                       0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
+                                       0b00000000_b, 0b00000000_b, 0b00000000_b   // [3]
+                                       ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 1, .left = 2, .bottom = 1, .right = 21}));
+}
+
 TEST(Line, OverLongHorizontal) {
   // The line end is too far in the x direction. Check that it is correctly clipped.
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
