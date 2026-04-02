@@ -45,6 +45,8 @@
 // Local includes
 #include "create_bitmap.hpp"
 
+namespace {
+
 using testing::ElementsAre;
 
 TEST(DrawChar, A) {
@@ -123,3 +125,5 @@ TEST(DrawChar, Sans32A_Sans16A) {
                                        ));
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 31, .right = 31}));
 }
+
+}  // end anonymous namespace
