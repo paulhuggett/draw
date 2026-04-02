@@ -80,6 +80,11 @@ TEST(Rect, InsetToEmpty) {
   EXPECT_EQ(r.height(), 0);
 }
 
+TEST(Rect, InsetOutset) {
+  constexpr auto r = draw::rect{.top = 2, .left = 2, .bottom = 4, .right = 4}.inset(-2, -2);
+  EXPECT_EQ(r, (draw::rect{.top = 0, .left = 0, .bottom = 6, .right = 6}));
+}
+
 TEST(Rect, Union) {
   constexpr auto r1 = draw::rect{.top = 1, .left = 1, .bottom = 2, .right = 2};
   constexpr auto r2 = draw::rect{.top = 2, .left = 2, .bottom = 3, .right = 3};
