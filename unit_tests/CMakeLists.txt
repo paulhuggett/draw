@@ -36,6 +36,7 @@ target_sources(draw-unit-tests
     rect.hpp
     test_copy.cpp
     test_draw_char.cpp
+    test_font.cpp
     test_frame_rect.cpp
     test_iumap.cpp
     test_line.cpp

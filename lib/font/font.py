@@ -218,7 +218,6 @@ namespace {
 ''')
         widest = 0
         baseline = 32 - 8
-        source.write('constexpr std::array<kerning_pair, 0> empty_kern;\n')
         for k, v in font.items():
             if k in kd:
                 write_kerning_pairs(source, k, kd[k])
@@ -243,7 +242,7 @@ draw::font const {name} {{
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
-            kp_name = f'kern_{k:04x}' if k in kd else 'empty_kern'
+            kp_name = f'kern_{k:04x}' if k in kd else 'draw::empty_kern'
             source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }},{kname}\n')
         source.write('  }\n};\n')
 

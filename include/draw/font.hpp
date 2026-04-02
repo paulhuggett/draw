@@ -51,6 +51,8 @@ struct kerning_pair {
   std::uint32_t preceding : 21 = 0U;
   std::uint32_t pad : 3 = 0U;
   std::uint32_t distance : 8 = 0U;
+
+  friend constexpr bool operator==(kerning_pair const&, kerning_pair const&) noexcept = default;
 };
 
 // The glyphs in a font are always a multiple of 8 pixels tall as given by the font's 'height'
@@ -91,6 +93,8 @@ struct font {
     return &pos->second;
   }
 };
+
+constexpr std::array<kerning_pair, 0> empty_kern;
 
 constexpr std::array all_fonts{std::cref(sans16), std::cref(sans32)};
 
