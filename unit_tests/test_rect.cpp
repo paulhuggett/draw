@@ -42,55 +42,58 @@ namespace {
 
 TEST(Rect, Null) {
   constexpr draw::rect r;
+  EXPECT_EQ(r, (draw::rect{.top = 0, .left = 0, .bottom = 0, .right = 0}));
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
 }
 
+// Note that I don't use constexpr here so that calls to rect methods count towards coverage.
 TEST(Rect, InsetEmpty) {
-  constexpr auto r = draw::rect{}.inset(1, 1);
+  auto const r = draw::rect{}.inset(1, 1);
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
 }
 
 TEST(Rect, InsetSmaller) {
-  constexpr auto r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(1, 1);
+  auto const r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(1, 1);
   EXPECT_EQ(r, (draw::rect{.top = 11, .left = 11, .bottom = 19, .right = 19}));
   EXPECT_EQ(r.width(), 8);
   EXPECT_EQ(r.height(), 8);
 }
 
 TEST(Rect, InsetLarger1) {
-  constexpr auto r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(-1, -1);
+  auto const r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(-1, -1);
   EXPECT_EQ(r, (draw::rect{.top = 9, .left = 9, .bottom = 21, .right = 21}));
   EXPECT_EQ(r.width(), 12);
   EXPECT_EQ(r.height(), 12);
 }
 
 TEST(Rect, InsetLarger2) {
-  constexpr auto r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(-5, -5);
+  auto const r = draw::rect{.top = 10, .left = 10, .bottom = 20, .right = 20}.inset(-5, -5);
   EXPECT_EQ(r, (draw::rect{.top = 5, .left = 5, .bottom = 25, .right = 25}));
   EXPECT_EQ(r.width(), 20);
   EXPECT_EQ(r.height(), 20);
 }
 
 TEST(Rect, InsetToEmpty) {
-  constexpr auto r = draw::rect{.top = 2, .left = 2, .bottom = 4, .right = 4}.inset(2, 2);
+  auto const r = draw::rect{.top = 2, .left = 2, .bottom = 4, .right = 4}.inset(2, 2);
   EXPECT_EQ(r, (draw::rect{.top = 3, .left = 3, .bottom = 3, .right = 3}));
   EXPECT_EQ(r.width(), 0);
   EXPECT_EQ(r.height(), 0);
 }
 
 TEST(Rect, InsetOutset) {
-  constexpr auto r = draw::rect{.top = 2, .left = 2, .bottom = 4, .right = 4}.inset(-2, -2);
+  auto const r = draw::rect{.top = 2, .left = 2, .bottom = 4, .right = 4}.inset(-2, -2);
   EXPECT_EQ(r, (draw::rect{.top = 0, .left = 0, .bottom = 6, .right = 6}));
 }
 
 TEST(Rect, Union) {
-  constexpr auto r1 = draw::rect{.top = 1, .left = 1, .bottom = 2, .right = 2};
-  constexpr auto r2 = draw::rect{.top = 2, .left = 2, .bottom = 3, .right = 3};
-  constexpr auto r3 = r1.union_rect(r2);
+  auto const r1 = draw::rect{.top = 1, .left = 1, .bottom = 2, .right = 2};
+  auto const r2 = draw::rect{.top = 2, .left = 2, .bottom = 3, .right = 3};
+  auto const r3 = r1.union_rect(r2);
   EXPECT_EQ(r3, (draw::rect{.top = 1, .left = 1, .bottom = 3, .right = 3}));
-  constexpr auto r4 = r2.union_rect(r1);
+  auto const r4 = r2.union_rect(r1);
   EXPECT_EQ(r4, (draw::rect{.top = 1, .left = 1, .bottom = 3, .right = 3}));
 }
+
 }  // end anonymous namespace
