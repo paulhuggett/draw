@@ -198,7 +198,7 @@ def write_source_file(font:FontDict,
                       height:int,
                       output_dir:pathlib.Path,
                       definition:Dict[str, Any]) -> None:
-    id = int(definition['id'])
+    fid = int(definition['id'])
     name:str = definition['name']
     spacing = int(definition['spacing'])
     if name.find(os.sep) != -1:
@@ -228,7 +228,7 @@ namespace {
 
         source.write(f'''}} // end anonymous namespace
 draw::font const {name} {{
-  .id={id},
+  .id={fid},
   .baseline={baseline},
   .widest={widest},
   .height={height},
