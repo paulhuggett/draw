@@ -32,33 +32,42 @@
 // DUT
 #include "draw/font.hpp"
 #include "draw/sans16.hpp"
+#include "draw/types.hpp"
 
 // Google Test
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "draw/types.hpp"
-
 namespace {
 
+using namespace draw::literals;
 using draw::font;
 using testing::ElementsAre;
-
-using namespace draw::literals;
 
 TEST(Font, FindGlyphLatinSmallLetterA) {
   font::glyph const* const g = sans16.find_glyph(U'a');
   ASSERT_NE(g, nullptr);
-  EXPECT_EQ(std::get<font::kerning_pairs>(*g).size(), font::kerning_pairs{draw::empty_kern}.size());
-  EXPECT_EQ(std::get<font::bytes>(*g).size(), 12);
+  EXPECT_TRUE(std::get<font::kerning_pairs>(*g).empty());
+  EXPECT_THAT(std::get<font::bytes>(*g), ElementsAre(0x80_b, 0x0C_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b,
+                                                     0x80_b, 0x1F_b, 0x00_b, 0x10_b));
 }
 
 TEST(Font, FindMissingGlyph) {
   font::glyph const* const g = sans16.find_glyph(char32_t{0x0600U});
-  ASSERT_NE(g, nullptr);
-  EXPECT_TRUE(std::get<font::kerning_pairs>(*g).empty());
-  EXPECT_THAT(std::get<font::bytes>(*g), ElementsAre(0xfc_b, 0x1f_b, 0x04_b, 0x10_b, 0x04_b, 0x10_b, 0x04_b, 0x10_b,
-                                                     0x04_b, 0x10_b, 0x04_b, 0x10_b, 0xfc_b, 0x1f_b));
+  EXPECT_EQ(sans16.find_glyph(char32_t{0x0600U}), sans16.find_glyph(draw::white_square));
+}
+
+TEST(Font, FindMissingGlyphNoWhiteSqaure) {
+  constexpr std::array bitmap_0020 = {0x00_b, 0x00_b, 0x00_b, 0x00_b};
+  font const minimal{.id = 0xFF,
+                     .baseline = 12,
+                     .widest = 1,
+                     .height = 2,
+                     .spacing = 1,
+                     .glyphs = draw::font::glyph_map{
+                         {0x20, font::glyph{draw::empty_kern, bitmap_0020}},
+                     }};
+  EXPECT_EQ(minimal.find_glyph(char32_t{0x0600U}), minimal.find_glyph(char32_t{0x20U}));
 }
 
 }  // end anonymous namespace
