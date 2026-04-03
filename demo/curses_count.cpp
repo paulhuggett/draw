@@ -98,8 +98,17 @@ void show(WINDOW* const win, bitmap const& bmp) {
 
 }  // end anonymous namespace
 
-int main() {
+int main(int argc, char* argv[]) {
   using namespace std::chrono_literals;
+  bool one_shot = false;
+  if (argc > 1) {
+    if ("-one-shot"sv == argv[1]) {
+      one_shot = true;
+    } else {
+      std::fprintf(stdout, "Usage: %s [-one-shot]\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+  }
 
   initscr();  // Refreshes stdscr
   cbreak();
@@ -137,6 +146,6 @@ int main() {
 
     show(stdscr, frame_buffer);
     refresh();
-  } while (getch() != 'q');
+  } while (getch() != 'q' && !one_shot);
   endwin();
 }
