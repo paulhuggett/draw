@@ -53,7 +53,6 @@ TEST(Font, FindGlyphLatinSmallLetterA) {
 }
 
 TEST(Font, FindMissingGlyph) {
-  font::glyph const* const g = sans16.find_glyph(char32_t{0x0600U});
   EXPECT_EQ(sans16.find_glyph(char32_t{0x0600U}), sans16.find_glyph(draw::white_square));
 }
 
