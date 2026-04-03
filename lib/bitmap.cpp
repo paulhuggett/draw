@@ -276,16 +276,18 @@ void bitmap::copy(bitmap const& source, point const dest_pos, transfer_mode cons
 
   auto const dest_x = static_cast<unsigned>(std::max(dest_pos.x, coordinate{0}));
   for (auto src_y = src_y_init; src_y < src_y_end; ++src_y, ++dest_y) {
-    copy_row(src_x_init, src_x_end, &source.store_[src_y * source.stride_], dest_x, &store_[dest_y * stride_], mode);
+    auto const src_index = src_y * source.stride_;
+    auto const dest_index = dest_y * stride_;
+    copy_row(src_x_init, src_x_end, &source.store_[src_index], dest_x, &store_[dest_index], mode);
   }
 
   this->mark_dirty({.top = static_cast<coordinate>(dirty_top),
                     .left = static_cast<coordinate>(dest_x),
                     .bottom = static_cast<coordinate>(dest_y - 1U),
-                    .right = static_cast<coordinate>(dest_x + src_x_end - src_x_init - 1)});
+                    .right = static_cast<coordinate>(dest_x + src_x_end - src_x_init - 1U)});
 }
 
-void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t const y, std::byte const pattern) {
+void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned const y, std::byte const pattern) {
   using namespace draw::literals;
   if (x0 > x1) {
     std::swap(x0, x1);  // Ensure that we always go from lower to higher addresses.
@@ -295,8 +297,9 @@ void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t c
     return;
   }
   // Clamp x1 to the bitmap's right edge.
-  x1 = std::min(x1, static_cast<std::uint16_t>(width_ - 1U));
-  auto it = store_.begin() + y * stride_ + x0 / 8U;
+  x1 = std::min(x1, width_ - 1U);
+  auto it = store_.begin();
+  std::advance(it, (y * stride_) + (x0 / 8U));
   assert(it < store_.end() && "iterator is not within the bitmap");
 
   this->mark_dirty({.top = static_cast<coordinate>(y),
@@ -323,7 +326,7 @@ void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t c
   --bytes;
 
   // Set 8 pixels at a time going from left to right.
-  for (; bytes > 0; --bytes) {
+  for (; bytes > 0U; --bytes) {
     assert(it < store_.end() && "iterator is not within the bitmap");
     *it = pattern;
     ++it;
@@ -333,7 +336,7 @@ void bitmap::line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t c
   *it = (*it & ~mask_high) | (mask_high & pattern);
 }
 
-void bitmap::line_vertical(std::uint16_t const x, std::uint16_t y0, std::uint16_t y1) {
+void bitmap::line_vertical(unsigned const x, unsigned y0, unsigned y1) {
   using namespace draw::literals;
   if (x >= width_) {
     return;
@@ -347,7 +350,7 @@ void bitmap::line_vertical(std::uint16_t const x, std::uint16_t y0, std::uint16_
   y1 = std::min(static_cast<std::uint16_t>(y1 + 1U), height_);
   assert(y0 < y1);
 
-  auto index = static_cast<unsigned>(y0 * stride_ + x / 8U);
+  auto index = y0 * stride_ + x / 8U;
   auto const bits = 0x80_b >> (x % 8U);
   for (auto y = y0; y < y1; ++y) {
     assert(index < store_.size() && "index is not within the bitmap");
@@ -355,10 +358,10 @@ void bitmap::line_vertical(std::uint16_t const x, std::uint16_t y0, std::uint16_
     index += stride_;
   }
 
-  this->mark_dirty(rect{.top = static_cast<coordinate>(y0),
-                        .left = static_cast<coordinate>(x),
-                        .bottom = static_cast<coordinate>(y1 - 1U),
-                        .right = static_cast<coordinate>(x)});
+  this->mark_dirty({.top = static_cast<coordinate>(y0),
+                    .left = static_cast<coordinate>(x),
+                    .bottom = static_cast<coordinate>(y1 - 1U),
+                    .right = static_cast<coordinate>(x)});
 }
 
 void bitmap::line(point p0, point p1) {
@@ -373,8 +376,8 @@ void bitmap::line(point p0, point p1) {
   }
   if (p0.x == p1.x) {
     if (p0.x >= 0 && p0.x < width_) {
-      this->line_vertical(static_cast<std::uint16_t>(p0.x), static_cast<std::uint16_t>(std::max(p0.y, coordinate{0})),
-                          static_cast<std::uint16_t>(std::max(p1.y, coordinate{0})));
+      this->line_vertical(static_cast<unsigned>(p0.x), static_cast<unsigned>(std::max(p0.y, coordinate{0})),
+                          static_cast<unsigned>(std::max(p1.y, coordinate{0})));
     }
     return;
   }
@@ -386,7 +389,7 @@ void bitmap::line(point p0, point p1) {
   auto err = dx + dy;
 
   for (;;) {
-    this->set(point{.x = p0.x, .y = p0.y}, true);
+    this->set({.x = p0.x, .y = p0.y}, true);
     auto const e2 = err * 2;
     if (e2 >= dy) {
       if (p0.x == p1.x) {
@@ -411,11 +414,11 @@ void bitmap::frame_rect(rect const& r) {
     return;
   }
   // The top and bottom lines
-  this->line(point{.x = r.left, .y = r.top}, point{.x = r.right, .y = r.top});
-  this->line(point{.x = r.left, .y = r.bottom}, point{.x = r.right, .y = r.bottom});
+  this->line({.x = r.left, .y = r.top}, {.x = r.right, .y = r.top});
+  this->line({.x = r.left, .y = r.bottom}, {.x = r.right, .y = r.bottom});
   // The left and right lines
-  this->line(point{.x = r.left, .y = r.top}, point{.x = r.left, .y = r.bottom});
-  this->line(point{.x = r.right, .y = r.top}, point{.x = r.right, .y = r.bottom});
+  this->line({.x = r.left, .y = r.top}, {.x = r.left, .y = r.bottom});
+  this->line({.x = r.right, .y = r.top}, {.x = r.right, .y = r.bottom});
 }
 
 using namespace draw::literals;
@@ -436,7 +439,7 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
   auto const y0 = static_cast<std::uint16_t>(std::max(r.top, coordinate{0}));
   auto const y1 = std::min(static_cast<std::uint16_t>(r.bottom), static_cast<std::uint16_t>(height_ - 1U));
   for (auto y = y0; y <= y1; ++y) {
-    this->line_horizontal(x0, x1, y, pat.data[y % 8]);
+    this->line_horizontal(x0, x1, y, pat.data[y % 8U]);
   }
 }
 
@@ -460,18 +463,18 @@ static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) 
   std::optional<char32_t> prev_cp;
 
   icubaby::t8_32 transcoder;
-  std::array<char32_t, 1> code_point_buffer{};
+  std::array<char32_t, 1U> code_point_buffer{};
 
-  auto const begin = std::begin(code_point_buffer);
+  auto const begin = std::begin(code_point_buffer);  // NOLINT(*-qualified-auto)
   for (auto const cu : s) {
-    if (auto const it = transcoder(cu, begin); it != begin) {
+    if (auto const it = transcoder(cu, begin); it != begin) {  // NOLINT(*-qualified-auto)
       // We have a code point.
       assert(std::distance(begin, it) == 1);
       x = scan_code_point(x, f, *begin, prev_cp, draw);
       prev_cp = *begin;
     }
   }
-  if (auto const it = transcoder.end_cp(begin); it != begin) {
+  if (auto const it = transcoder.end_cp(begin); it != begin) {  // NOLINT(*-qualified-auto)
     // We have a code point.
     assert(std::distance(begin, it) == 1);
     x = scan_code_point(x, f, *begin, prev_cp, draw);
@@ -482,9 +485,9 @@ static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) 
 
 point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos) {
   coordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, coordinate x) {
-    this->draw_char(gc, f, code_point, point{.x = static_cast<coordinate>(pos.x + x), .y = pos.y});
+    this->draw_char(gc, f, code_point, {.x = static_cast<coordinate>(pos.x + x), .y = pos.y});
   });
-  return point{.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
+  return {.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
 }
 
 coordinate string_width(font const& f, std::u8string_view s) {

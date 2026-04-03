@@ -77,7 +77,7 @@ public:
   /// \returns The size, in bytes, of the required frame store for a bitmap with the supplied dimensions.
   [[nodiscard]] static constexpr std::size_t required_store_size(std::uint16_t width, std::uint16_t height) noexcept {
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
-    return required_stride(width) * static_cast<unsigned>(height);
+    return required_stride(width) * static_cast<std::size_t>(height);
   }
 
   enum class transfer_mode : std::uint8_t { mode_copy, mode_or };
@@ -142,8 +142,8 @@ private:
   std::optional<rect> dirty_;   ///< The area of the bitmap modified since the last call to clean(), if any.
 
   [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
-  void line_horizontal(std::uint16_t x0, std::uint16_t x1, std::uint16_t y, std::byte pattern);
-  void line_vertical(std::uint16_t x, std::uint16_t y0, std::uint16_t y1);
+  void line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte pattern);
+  void line_vertical(unsigned x, unsigned y0, unsigned y1);
 
   /// Adds the supplied rectangle to the "dirty" area.
   constexpr void mark_dirty(rect const& modified) noexcept {
