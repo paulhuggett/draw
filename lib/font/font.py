@@ -43,8 +43,8 @@ import png
 
 REPLACEMENT_CHAR = 0xFFFD
 
-FontDict = Dict[int, Union[Tuple[int, int], int]]  #type FontDict = dict[int,tuple[int, ...] | int]
-SplitList = List[Tuple[int, int]]                  #type SplitList = list[tuple[int, int]]
+FontDict = Dict[int, Union[Tuple[int, int], int]]
+SplitList = List[Tuple[int, int]]
 
 def is_splitable(no_split:SplitList, x:int) -> Tuple[SplitList, bool]:
     """
@@ -74,7 +74,7 @@ def read_png(file:pathlib.Path):
     return width, height, pixels
 
 
-InputList = List[Dict[str, Any]]  #type InputList = list[dict[str, Any]]
+InputList = List[Dict[str, Any]]
 
 def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int]:
     all_code_points:FontDict = {}
@@ -172,8 +172,8 @@ extern draw::font const {name};
 #endif // {guard}
 ''')
 
-KernDictValue = List[Tuple[int, int]]  #type KernDictValue = list[tuple[int, int]]
-KernDict = Dict[int, KernDictValue]    #type KernDict = dict[int, KernDictValue]
+KernDictValue = List[Tuple[int, int]]
+KernDict = Dict[int, KernDictValue]
 
 def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
     source.write(f'constexpr std::array kern_{k:04x} = {{')
@@ -266,7 +266,7 @@ def uniqued(iterable, key=None):
             yield v
 
 
-JsonKernList = Dict[str, List[Tuple[str, int]]]  #type JsonKernList = dict[str, list[tuple[str, int]]]
+JsonKernList = Dict[str, List[Tuple[str, int]]]
 
 def kern_pairs(kl:JsonKernList) -> KernDict:
     """The kern list is a series of tuples which represent the previous code point, the current code
