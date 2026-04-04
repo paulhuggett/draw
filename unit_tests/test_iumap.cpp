@@ -267,6 +267,31 @@ TEST(IUMap, MoveCtor) {
   EXPECT_EQ(*b.find(3), three);
 }
 
+TEST(IUMap, IteratorBackwards) {
+  struct hasher {
+    constexpr std::size_t operator()(int v) const noexcept { return v; }
+  };
+  using map_type = draw::iumap<int, int, 4, hasher>;
+  using value_type = map_type::value_type;
+  map_type h{
+      value_type{1, 2},
+      value_type{2, 4},
+      value_type{3, 6},
+  };
+  auto const new_size = h.erase(2);
+  EXPECT_EQ(new_size, 2);
+  std::vector<value_type> found;
+
+  auto pos = h.end();
+  ASSERT_NE(pos, h.begin());
+  --pos;
+  ASSERT_NE(pos, h.begin());
+  EXPECT_EQ(*pos, (value_type{3, 6}));
+  --pos;
+  ASSERT_EQ(pos, h.begin());
+  EXPECT_EQ(*pos, (value_type{1, 2}));
+}
+
 class move_only {
 public:
   constexpr explicit move_only(int a) noexcept : a_{a} {}

@@ -270,6 +270,7 @@ public:
   std::pair<iterator, bool> try_emplace(Key const& key, Args&&... args);
   /// erases elements
   iterator erase(iterator pos);
+  size_type erase(Key const& key);
 
   // Lookup
   [[nodiscard]] constexpr iterator find(Key const& k);
@@ -533,6 +534,15 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
     }
   }
   return result;
+}
+
+template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
+  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
+auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(Key const& key) -> size_type {
+  if (auto pos = this->find(key); pos != this->end()) {
+    this->erase(pos);
+  }
+  return this->size();
 }
 
 /// Searches the container for a specified key. Stops when the key is found or an unused slot is probed.
