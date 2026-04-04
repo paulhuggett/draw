@@ -280,7 +280,6 @@ TEST(IUMap, IteratorBackwards) {
   };
   auto const new_size = h.erase(2);
   EXPECT_EQ(new_size, 2);
-  std::vector<value_type> found;
 
   auto pos = h.end();
   ASSERT_NE(pos, h.begin());
