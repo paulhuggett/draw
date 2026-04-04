@@ -56,7 +56,7 @@ namespace draw {
 bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
   auto const key =
       (static_cast<std::uint32_t>(f.id) << icubaby::code_point_bits) | static_cast<std::uint32_t>(code_point);
-  return cache_.access(key, [this, &f, code_point](std::uint32_t const _, std::size_t const index) {
+  return cache_.access(key, [this, &f, code_point](std::uint32_t const /*key*/, std::size_t const index) {
     // Called when a glyph was not found in the cache.
     using difference_type = decltype(store_)::difference_type;
     auto const begin = std::begin(store_) + static_cast<difference_type>(index * store_size_);
