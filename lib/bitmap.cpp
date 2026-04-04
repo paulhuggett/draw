@@ -43,9 +43,11 @@
 #include <print>
 #endif
 
+// icubaby dependency
+#include "icubaby/icubaby.hpp"
+
 // Local includes
 #include "draw/glyph_cache.hpp"
-#include "draw/icubaby.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 

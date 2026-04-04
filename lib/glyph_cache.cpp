@@ -35,8 +35,11 @@
 #include <cstdint>
 #include <span>
 
+// icubaby dependency
+#include "icubaby/icubaby.hpp"
+
+// Local includes
 #include "draw/bitmap.hpp"
-#include "draw/icubaby.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 

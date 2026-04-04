@@ -64,6 +64,19 @@ if (NOT Python_EXECUTABLE)
   endif()
 endif()
 
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG HEAD
+)
+FetchContent_Declare(
+  icubaby
+  GIT_REPOSITORY https://github.com/paulhuggett/icubaby.git
+  GIT_TAG HEAD
+)
+FetchContent_MakeAvailable(icubaby)
+
+
 # If the compiler accepts the command-line flag given by the
 # 'flag' parameter, 'result' is set to flag otherwise to an
 # empty string.
@@ -136,11 +149,11 @@ function (setup_target target)
   # coverage
   target_compile_options(${target} PRIVATE
     $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<CXX_COMPILER_ID:GNU>>:-fprofile-arcs -ftest-coverage>
-    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping> 
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping>
   )
   target_link_options(${target} PRIVATE
     $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<CXX_COMPILER_ID:GNU>>:-fprofile-arcs -ftest-coverage>
-    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping> 
+    $<$<AND:$<BOOL:${DRAW_COVERAGE}>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-fprofile-instr-generate -fcoverage-mapping>
   )
 
   set(ld64_link_options LINKER:-map,${CMAKE_CURRENT_BINARY_DIR}/${target}.map)
@@ -165,13 +178,8 @@ set(DRAW_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(lib)
 
 if (DRAW_UNIT_TESTS)
-  FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG HEAD
-  )
-
   enable_testing()
+
   # Tell gtest to link against the "Multi-threaded Debug DLL runtime library"
   # on Windows.
   set(gtest_force_shared_crt On CACHE BOOL "Always use msvcrt.dll")

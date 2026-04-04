@@ -36,7 +36,6 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/bitmap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/font.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
-  "${DRAW_PROJECT_ROOT}/include/draw/icubaby.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/tracer.hpp"
@@ -52,4 +51,5 @@ target_include_directories(draw
   INTERFACE "${CMAKE_CURRENT_BINARY_DIR}"
 )
 target_link_libraries(draw PUBLIC draw-font)
+target_link_libraries(draw PUBLIC icubaby)
 setup_target(draw)
