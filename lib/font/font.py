@@ -43,7 +43,7 @@ import png
 
 REPLACEMENT_CHAR = 0xFFFD
 
-FontDict = Dict[int, Union[Tuple[int, int], int]]
+FontDict = Dict[int, Union[Tuple[int, ...], int]]
 SplitList = List[Tuple[int, int]]
 
 def is_splitable(no_split:SplitList, x:int) -> Tuple[SplitList, bool]:
@@ -60,8 +60,14 @@ def is_splitable(no_split:SplitList, x:int) -> Tuple[SplitList, bool]:
             no_split = no_split[1:]  # Remove this region from the no-split list
     return (no_split, splitable)
 
+Input = Dict[str, Any]
+InputList = List[Input]
+PixelData = List[List[int]]
 
-def read_png(file:pathlib.Path):
+def read_png_file(parent:pathlib.Path, f:Input) -> Tuple[int, int, PixelData]:
+    file = parent / pathlib.Path(f['file'])
+    if not file.exists():
+        raise RuntimeError(f'File {file} does not exist!')
     reader = png.Reader(filename=file)
     width, height, pixels, metadata = reader.asRGBA()
     pixels = list(pixels)
@@ -74,68 +80,80 @@ def read_png(file:pathlib.Path):
     return width, height, pixels
 
 
-InputList = List[Dict[str, Any]]
+class BuildFontState:
+    def __init__(self)  -> None:
+        self.__all_code_points:FontDict = {}
+        self.__all_patterns:Dict[int, int] = {} # Map a hash of the bitmap to the corresponding code point.
+
+    def append_columns(self, code_point:int, columns:List[int]) -> None:
+        all_patterns_key = hash(tuple(columns))
+        prev_code_point = self.__all_patterns.get(all_patterns_key)
+        if prev_code_point is None:
+            self.__all_code_points[code_point] = tuple(columns)
+            self.__all_patterns[all_patterns_key] = code_point
+        else:
+            self.__all_code_points[code_point] = prev_code_point
+
+    def all_code_points(self) -> FontDict:
+        return self.__all_code_points
+
+
+def scan_y(x:int, height:int, pixels:PixelData) -> List[int]:
+    column = [0] * (height // 8)
+    x_offset = x * 4
+    for y in range(0, height):
+        rgba = pixels[y][x_offset : x_offset + 4]
+        # Is this a black pixel?
+        if rgba == bytearray.fromhex('00 00 00 FF'):
+            column[y // 8] |= (1 << (y % 8))
+    return column
+
 
 def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int]:
-    all_code_points:FontDict = {}
-    all_patterns:Dict[int, int] = {} # Map a hash of the bitmap to the corresponding code point.
-    code_point = ord('!')
-
-    height = None
     if len(inputs) == 0:
         raise RuntimeError('No inputs specified!')
 
+    code_point = ord('!')
+    state = BuildFontState()
+    height = None
+
     for f in inputs:
-        file = parent / pathlib.Path(f['file'])
-        if not file.exists():
-            raise RuntimeError(f'File {file} does not exist!')
+        width, height2, pixels = read_png_file(parent, f)
+        if height is None:
+            height = height2
+        elif height2 != height:
+            raise RuntimeError(f'Height of {parent / pathlib.Path(f['file'])} does not match previous height of {height}!')
 
         # 'starts' is a list of two-tuples (x, code_point) where x is the x-coordinate of the
         # column and code_point is the Unicode code point for that column.
         starts = dict(f["starts"])
+
         # 'nosplit' is a list of empty column pairs that should not cause a split for a new glyph.
         no_split:SplitList = sorted(f['no-split'], key=lambda x: x[0])
+        # Guarantee that no_split[] will not be empty
+        no_split += [(width, width)]
 
-        width, height2, pixels = read_png(file)
-        if height is None:
-            height = height2
-        elif height2 != height:
-            raise RuntimeError(f'Height of {file} does not match previous height of {height}!')
-
-        column_size = height // 8
-        empty_column = [0] * column_size
+        empty_column = [0] * (height // 8)
         columns:list[int] = [] # The columns that make up an individual character
-
-        no_split += [(width, width)] # Guarantees that no_split[] will not be empty
 
         for x in range(0, width):
             code_point = starts.get(x, code_point)
-            # A new list to represent the pixels of this column
-            column = empty_column[:]
-            for y in range(0, height):
-                x_offset = x * 4
-                rgba = pixels[y][x_offset : x_offset + 4]
-                # Is this a black pixel?
-                if rgba == bytearray.fromhex('00 00 00 FF'):
-                    column[y // 8] |= (1 << (y % 8))
+            column = scan_y(x, height, pixels)
 
             # We've scanned an entire vertical column. Now decide whether to keep it.
             no_split, splitable = is_splitable(no_split, x)
             if not splitable or column != empty_column:
                 columns.extend(column)  # We're keeping this column.
             elif column == empty_column and len(columns) > 0:
-                prev_code_point = all_patterns.get(hash(tuple(columns)))
-                if prev_code_point is None:
-                    all_code_points[code_point] = tuple(columns)
-                    all_patterns[hash(tuple(columns))] = code_point
-                else:
-                    all_code_points[code_point] = prev_code_point
+                # A split point. Record this code-point and its columns.
+                state.append_columns(code_point, columns)
+                # Start a new code point.
                 columns = []
                 code_point += 1
             else:
                 assert column == empty_column
     assert height is not None
-    return (all_code_points, height // 8)
+    return state.all_code_points(), height // 8
 
 
 SIGNATURE = '''// This file was generated by font.py
