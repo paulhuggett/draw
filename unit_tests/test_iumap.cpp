@@ -54,6 +54,8 @@ TEST(IUMap, Empty) {
   EXPECT_EQ(h.size(), 0U);
   EXPECT_EQ(h.max_size(), 8U);
   EXPECT_EQ(h.capacity(), 8U);
+  EXPECT_EQ(h.begin(), h.end());
+  EXPECT_EQ(h.cbegin(), h.cend());
   EXPECT_TRUE(h.empty());
 }
 

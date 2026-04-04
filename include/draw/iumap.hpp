@@ -246,11 +246,11 @@ public:
   // Iterators
   [[nodiscard]] constexpr auto begin() noexcept { return iterator{v_.data(), &v_}; }
   [[nodiscard]] constexpr auto begin() const noexcept { return const_iterator{v_.data(), &v_}; }
-  [[nodiscard]] constexpr auto cbegin() noexcept { return const_iterator{v_.data(), &v_}; }
+  [[nodiscard]] constexpr auto cbegin() const noexcept { return const_iterator{v_.data(), &v_}; }
 
   [[nodiscard]] constexpr auto end() noexcept { return iterator{v_.data() + v_.size(), &v_}; }
   [[nodiscard]] constexpr auto end() const noexcept { return const_iterator{v_.data() + v_.size(), &v_}; }
-  [[nodiscard]] constexpr auto cend() noexcept { return const_iterator{v_.data() + v_.size(), &v_}; }
+  [[nodiscard]] constexpr auto cend() const noexcept { return const_iterator{v_.data() + v_.size(), &v_}; }
 
   // Capacity
   [[nodiscard]] constexpr auto empty() const noexcept { return size_ == 0; }
