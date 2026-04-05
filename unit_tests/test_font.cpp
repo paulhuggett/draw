@@ -34,6 +34,9 @@
 #include "draw/sans16.hpp"
 #include "draw/types.hpp"
 
+// Standard library
+#include <unordered_map>
+
 // Google Test
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -68,5 +71,25 @@ TEST(Font, FindMissingGlyphNoWhiteSqaure) {
                      }};
   EXPECT_EQ(minimal.find_glyph(char32_t{0x0600U}), minimal.find_glyph(char32_t{0x20U}));
 }
+
+class FontParam : public testing::TestWithParam<std::reference_wrapper<draw::font const>> {};
+
+TEST_P(FontParam, PerfectHash) {
+  draw::font const& font = GetParam();
+  auto const& glyphs = font.glyphs;
+  auto const& hash_function = glyphs.hash_function();
+
+  // Check that the hash of every code-point in the font is both unique and less than the capacity of the container.
+  std::unordered_map<std::size_t, std::uint32_t> hashes;
+  std::ranges::for_each(glyphs, [&](auto const& kvp) {
+    auto const& [code_point, _] = kvp;
+    auto const hash = hash_function(code_point);
+    EXPECT_LT(hash, glyphs.capacity()) << "hash for code-point " << code_point;
+    auto [pos, did_insert] = hashes.emplace(hash, code_point);
+    EXPECT_TRUE(did_insert) << "hash for code-point " << code_point << " collides with code-point " << pos->second;
+  });
+}
+
+INSTANTIATE_TEST_SUITE_P(FontParam, FontParam, testing::ValuesIn(draw::all_fonts));
 
 }  // end anonymous namespace

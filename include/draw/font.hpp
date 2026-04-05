@@ -39,10 +39,30 @@
 #include <unordered_map>
 
 #include "draw/iumap.hpp"
+// Font includes
 #include "draw/sans16.hpp"
 #include "draw/sans32.hpp"
 
 namespace draw {
+
+namespace details {
+
+/// The hash function used for the glyph container. This is intended to be a perfect hash: the result for
+/// every code-point is unique and less than the container's capacity.
+struct glyph_hasher {
+  constexpr std::size_t operator()(std::uint32_t const cp) const noexcept {
+    switch (cp) {
+    // The following two code-points are mapped to missing glyphs.
+    case 0x25a1: return 127;  // WHITE SQUARE
+    case 0xfffd:
+      return 144;  // REPLACEMENT CHARACTER
+    // Most code point map directly to their hash.
+    default: return cp;
+    }
+  }
+};
+
+}  // end namespace details
 
 constexpr auto white_square = std::uint32_t{0x25A1U};
 
@@ -71,8 +91,7 @@ struct font {
   using kerning_pairs = std::span<kerning_pair const>;
   using bytes = std::span<std::byte const>;
   using glyph = std::tuple<kerning_pairs, bytes>;
-  // TODO: Use a perfect hash function. Use the exact glyph count.
-  using glyph_map = iumap<std::uint32_t, glyph, 256U>;
+  using glyph_map = iumap<std::uint32_t, glyph, 256U, details::glyph_hasher>;
   glyph_map glyphs;
 
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {

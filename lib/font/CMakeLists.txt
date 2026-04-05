@@ -79,8 +79,10 @@ target_sources(draw-font PRIVATE
 )
 
 target_include_directories(draw-font
-  PUBLIC "${DRAW_PROJECT_ROOT}/include"
-  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
-    PUBLIC "${CMAKE_CURRENT_BINARY_DIR}"
+  PUBLIC
+    "${DRAW_PROJECT_ROOT}/include"
+    "${CMAKE_CURRENT_BINARY_DIR}"
+  PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 setup_target(draw-font)
