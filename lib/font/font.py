@@ -53,7 +53,6 @@ def is_splitable(no_split:SplitList, x:int) -> Tuple[SplitList, bool]:
     """
     splitable = True
     no_split_point = no_split[0]
-    #print('no_split_point=', no_split_point, 'x=', x, 'code_point=', code_point)
     if x >= no_split_point[0] and x <= no_split_point[1]:
         splitable = False
         if x == no_split_point[1]:
@@ -84,7 +83,6 @@ class BuildFontState:
     def __init__(self)  -> None:
         self.__all_code_points:FontDict = {}
         self.__all_patterns:Dict[int, int] = {} # Map a hash of the bitmap to the corresponding code point.
-
     def append_columns(self, code_point:int, columns:List[int]) -> None:
         all_patterns_key = hash(tuple(columns))
         prev_code_point = self.__all_patterns.get(all_patterns_key)
@@ -93,7 +91,6 @@ class BuildFontState:
             self.__all_patterns[all_patterns_key] = code_point
         else:
             self.__all_code_points[code_point] = prev_code_point
-
     def all_code_points(self) -> FontDict:
         return self.__all_code_points
 
@@ -109,7 +106,7 @@ def scan_y(x:int, height:int, pixels:PixelData) -> List[int]:
     return column
 
 
-def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int]:
+def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int] | None:
     if len(inputs) == 0:
         raise RuntimeError('No inputs specified!')
 
@@ -152,7 +149,8 @@ def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int]:
                 code_point += 1
             else:
                 assert column == empty_column
-    assert height is not None
+    if height is None:
+        return None
     return state.all_code_points(), height // 8
 
 
