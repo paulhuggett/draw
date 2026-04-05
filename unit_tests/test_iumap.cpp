@@ -268,16 +268,15 @@ TEST(IUMap, MoveCtor) {
 }
 
 TEST(IUMap, IteratorBackwards) {
-  struct hasher {
-    constexpr std::size_t operator()(int v) const noexcept { return v; }
-  };
-  using map_type = draw::iumap<int, int, 4, hasher>;
+  auto const hasher = [](int v) constexpr { return static_cast<std::size_t>(v); };
+  using map_type = draw::iumap<int, int, 4U, decltype(hasher)>;
   using value_type = map_type::value_type;
-  map_type h{
-      value_type{1, 2},
-      value_type{2, 4},
-      value_type{3, 6},
-  };
+  map_type h{{
+                 value_type{1, 2},
+                 value_type{2, 4},
+                 value_type{3, 6},
+             },
+             hasher};
   auto const new_size = h.erase(2);
   EXPECT_EQ(new_size, 2);
 
