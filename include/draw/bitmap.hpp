@@ -141,7 +141,9 @@ private:
   std::span<std::byte> store_;  ///< The backing store containing the bitmap's pixel data
   std::optional<rect> dirty_;   ///< The area of the bitmap modified since the last call to clean(), if any.
 
-  [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept { return stride_ * height_; }
+  [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept {
+    return static_cast<std::size_t>(stride_) * height_;
+  }
   void line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte pattern);
   void line_vertical(unsigned x, unsigned y0, unsigned y1);
 

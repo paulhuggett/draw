@@ -46,15 +46,21 @@ using testing::ElementsAre;
 using testing::ElementsAreArray;
 using namespace draw::literals;
 
-std::tuple<std::vector<std::byte>, draw::bitmap> create_black_filled_bitmap_and_store(std::uint16_t width,
-                                                                                      std::uint16_t height) {
+std::tuple<std::vector<std::byte>, draw::bitmap> create_pattern_filled_bitmap_and_store(std::uint16_t const width,
+                                                                                        std::uint16_t const height,
+                                                                                        draw::pattern const& pat) {
   auto [store, bmp] = create_bitmap_and_store(width, height);
-  bmp.paint_rect(bmp.bounds(), draw::black);
-  return std::make_tuple(std::move(store), std::move(bmp));
+  bmp.paint_rect(bmp.bounds(), pat);
+  return {std::move(store), std::move(bmp)};
 }
 
-std::tuple<std::vector<std::byte>, draw::bitmap> create_framed_bitmap_and_store(std::uint16_t width,
-                                                                                std::uint16_t height) {
+std::tuple<std::vector<std::byte>, draw::bitmap> create_black_filled_bitmap_and_store(std::uint16_t const width,
+                                                                                      std::uint16_t const height) {
+  return create_pattern_filled_bitmap_and_store(width, height, draw::black);
+}
+
+std::tuple<std::vector<std::byte>, draw::bitmap> create_framed_bitmap_and_store(std::uint16_t const width,
+                                                                                std::uint16_t const height) {
   auto [store, bmp] = create_bitmap_and_store(width, height);
   bmp.frame_rect(bmp.bounds());
   return std::make_tuple(std::move(store), std::move(bmp));
@@ -74,7 +80,7 @@ constexpr std::array empty{
 TEST(Copy, SmallerCopiedToTopLeft) {
   auto [store, bmp] = create_bitmap_and_store(8U, 8U);
   auto [store2, bmp2] = create_black_filled_bitmap_and_store(5U, 4U);
-  bmp.copy(bmp2, draw::point{.x = 0, .y = 0}, draw::bitmap::transfer_mode::mode_copy);
+  bmp.copy(bmp2, {.x = 0, .y = 0}, draw::bitmap::transfer_mode::mode_copy);
   EXPECT_THAT(bmp.store(), ElementsAre(0b11111000_b,  // [0]
                                        0b11111000_b,  // [1]
                                        0b11111000_b,  // [2]
@@ -87,18 +93,64 @@ TEST(Copy, SmallerCopiedToTopLeft) {
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 3, .right = 4}));
 }
 
-TEST(Copy, SmallerCopiedToMiddle) {
+TEST(Copy, SmallerCopiedToMiddleCopyMode) {
   auto [store, bmp] = create_bitmap_and_store(8U, 8U);
+  // Fill the destination bitmap with gray.
+  bmp.paint_rect(bmp.bounds(), draw::gray);
+  // Reset the dirty area.
+  bmp.clean();
+
   auto [store2, bmp2] = create_black_filled_bitmap_and_store(4U, 4U);
-  bmp.copy(bmp2, draw::point{.x = 2, .y = 2}, draw::bitmap::transfer_mode::mode_copy);
-  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b,  // [0]
-                                       0b00000000_b,  // [1]
-                                       0b00111100_b,  // [2]
-                                       0b00111100_b,  // [3]
-                                       0b00111100_b,  // [4]
-                                       0b00111100_b,  // [5]
-                                       0b00000000_b,  // [6]
-                                       0b00000000_b   // [7]
+  bmp.copy(bmp2, {.x = 2, .y = 2}, draw::bitmap::transfer_mode::mode_copy);
+
+  EXPECT_THAT(bmp.store(), ElementsAre(0b10101010_b,  // [0]
+                                       0b01010101_b,  // [1]
+                                       0b10111110_b,  // [2]
+                                       0b01111101_b,  // [3]
+                                       0b10111110_b,  // [4]
+                                       0b01111101_b,  // [5]
+                                       0b10101010_b,  // [6]
+                                       0b01010101_b   // [7]
+                                       ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 2, .bottom = 5, .right = 5}));
+}
+
+TEST(Copy, SmallerCrossingDestinationBytesCopiedToMiddleCopyMode) {
+  auto [store, bmp] = create_bitmap_and_store(16U, 8U);
+
+  auto [store2, bmp2] = create_black_filled_bitmap_and_store(4U, 4U);
+  bmp.copy(bmp2, {.x = 6, .y = 2}, draw::bitmap::transfer_mode::mode_copy);
+
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
+                                       0b00000000_b, 0b00000000_b,  // [1]
+                                       0b00000011_b, 0b11000000_b,  // [2]
+                                       0b00000011_b, 0b11000000_b,  // [3]
+                                       0b00000011_b, 0b11000000_b,  // [4]
+                                       0b00000011_b, 0b11000000_b,  // [5]
+                                       0b00000000_b, 0b00000000_b,  // [6]
+                                       0b00000000_b, 0b00000000_b   // [7]
+                                       ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 6, .bottom = 5, .right = 9}));
+}
+
+TEST(Copy, SmallerCopiedToMiddleOrMode) {
+  auto [store, bmp] = create_bitmap_and_store(8U, 8U);
+  bmp.paint_rect(bmp.bounds(), draw::gray);
+  bmp.clean();
+
+  auto [store2, bmp2] = create_bitmap_and_store(4U, 4U);
+  bmp2.frame_rect(bmp2.bounds());
+  bmp2.clean();
+
+  bmp.copy(bmp2, {.x = 2, .y = 2}, draw::bitmap::transfer_mode::mode_or);
+  EXPECT_THAT(bmp.store(), ElementsAre(0b10101010_b,  // [0]
+                                       0b01010101_b,  // [1]
+                                       0b10111110_b,  // [2]
+                                       0b01110101_b,  // [3]
+                                       0b10101110_b,  // [4]
+                                       0b01111101_b,  // [5]
+                                       0b10101010_b,  // [6]
+                                       0b01010101_b   // [7]
                                        ));
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 2, .bottom = 5, .right = 5}));
 }
@@ -106,7 +158,7 @@ TEST(Copy, SmallerCopiedToMiddle) {
 TEST(Copy, SmallerBitmapWithNegativeXAndPartiallyVisible) {
   auto [store, bmp] = create_bitmap_and_store(8U, 8U);
   auto [store2, bmp2] = create_black_filled_bitmap_and_store(4U, 4U);
-  bmp.copy(bmp2, draw::point{.x = -2, .y = 0}, draw::bitmap::transfer_mode::mode_copy);
+  bmp.copy(bmp2, {.x = -2, .y = 0}, draw::bitmap::transfer_mode::mode_copy);
   EXPECT_THAT(bmp.store(), ElementsAre(0b11000000_b,  // [0]
                                        0b11000000_b,  // [1]
                                        0b11000000_b,  // [2]

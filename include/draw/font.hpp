@@ -85,7 +85,7 @@ struct font {
   std::uint8_t id = 0U;
   std::uint8_t baseline = 0U;
   std::uint8_t widest = 0U;
-  std::uint8_t height : 4 = 0U;  // in bytes rather than pixels.
+  std::uint8_t height : 4 = 0U;  ///< Height of a glyph (measured in bytes rather than pixels).
   std::uint8_t spacing : 4 = 0U;
 
   using kerning_pairs = std::span<kerning_pair const>;

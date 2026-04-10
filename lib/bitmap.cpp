@@ -31,12 +31,16 @@
 #include "draw/bitmap.hpp"
 
 // Standard library
+#include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <optional>
 #include <span>
+#include <tuple>
 #include <utility>
 #include <version>
 #if defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
@@ -47,6 +51,7 @@
 #include "icubaby/icubaby.hpp"
 
 // Local includes
+#include "draw/font.hpp"
 #include "draw/glyph_cache.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
@@ -60,14 +65,15 @@
 namespace {
 
 // TODO: Add a SIMD implementation? Check what the compiler already does.
-void memor(std::byte* DRAW_NONNULL dest, std::byte const* DRAW_NONNULL src, std::size_t len) {
-  for (; len > 0; --len) {
+template <typename T>
+void memor(T* DRAW_NONNULL dest, T const* DRAW_NONNULL src, std::size_t len) {
+  for (; len > 0U; --len) {
     *(dest++) |= *(src++);
   }
 }
 
-void transfer(std::byte* const DRAW_NONNULL dest, std::byte const mask, std::byte const v,
-              draw::bitmap::transfer_mode const mode) {
+template <typename T>
+void transfer(T* const DRAW_NONNULL dest, T const mask, T const v, draw::bitmap::transfer_mode const mode) {
   using enum draw::bitmap::transfer_mode;
   switch (mode) {
   case mode_or: *dest |= v; break;
@@ -102,20 +108,38 @@ void copy_row_aligned(unsigned src_x, unsigned const src_x_end, std::byte const*
   }
 }
 
-void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
+// There's less than a byte to copy.
+void copy_row_tiny(unsigned const src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
                    unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
-  using namespace draw::literals;
   assert(src_row != nullptr && "Source row must be supplied");
   assert(dest_row != nullptr && "Destination row must be supplied");
   assert(src_x % 8U != dest_x % 8U);
-  // There's less than a byte to copy.
-  // TODO: don't do this one pixel at a time.
+
+  auto const len = src_x_end - src_x;
+  auto const len_mask = ~(static_cast<std::byte>((1U << len) - 1U));
+
+  auto const src_shift = src_x % 8U;
+  auto const src_mask = len_mask >> src_shift;
   auto const* const src = src_row + (src_x / 8U);
-  for (; src_x < src_x_end; ++src_x, ++dest_x) {
-    auto const src_bit = *src & (0x80_b >> (src_x % 8U));
-    auto const dest_bit = 0x80_b >> (dest_x % 8U);
-    auto const v = static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit;
-    transfer(dest_row + (dest_x / 8U), dest_bit, v, mode);
+
+  auto const dest_shift = dest_x % 8U;
+  auto const dest_mask = len_mask >> dest_shift;
+  auto* dest = dest_row + (dest_x / 8U);
+
+  auto src_value = *src & src_mask;
+  if (dest_shift > src_shift) {
+    src_value >>= dest_shift - src_shift;
+  } else if (dest_shift < src_shift) {
+    src_value <<= src_shift - dest_shift;
+  }
+  transfer(dest, dest_mask, src_value, mode);
+
+  if (dest_shift + len > 8U) {
+    auto const overflow_bits = dest_shift + len - 8U;
+    auto const overflow_shift = 8U - overflow_bits;
+    auto const overflow_mask = static_cast<std::byte>(~((1U << overflow_shift) - 1U));
+    auto const overflow_value = static_cast<std::byte>(std::to_integer<unsigned>(src_value) << overflow_shift);
+    transfer(dest + 1U, overflow_mask, overflow_value, mode);
   }
 }
 
@@ -349,7 +373,7 @@ void bitmap::line_vertical(unsigned const x, unsigned y0, unsigned y1) {
   if (y0 >= height_) {
     return;
   }
-  y1 = std::min(static_cast<std::uint16_t>(y1 + 1U), height_);
+  y1 = std::min(y1 + 1U, static_cast<unsigned>(height_));
   assert(y0 < y1);
 
   auto index = y0 * stride_ + x / 8U;
