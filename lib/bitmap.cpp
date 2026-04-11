@@ -199,9 +199,8 @@ void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte con
       v &= 0xFF_b << (8U - remaining);
     }
     transfer(dest, ~mask_low, v, mode);
+    trace("{:08b}", std::to_underlying(*dest));
   }
-
-  trace("{:08b}", std::to_underlying(*dest));
 }
 
 void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
