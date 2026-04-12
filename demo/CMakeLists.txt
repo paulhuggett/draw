@@ -31,6 +31,7 @@
 
 if (DRAW_HOSTED)
   find_package(Curses)
+
   if(Curses_FOUND AND NOT TARGET Curses::Curses)
     add_library(Curses::Curses INTERFACE IMPORTED)
     set_target_properties(
@@ -40,13 +41,16 @@ if (DRAW_HOSTED)
         INTERFACE_INCLUDE_DIRECTORIES "${CURSES_INCLUDE_DIRS}"
     )
 
-    add_executable(draw-curses-count)
-    target_sources(draw-curses-count PRIVATE curses_count.cpp)
-    target_link_libraries(draw-curses-count PRIVATE draw)
-    target_link_libraries(draw-curses-count PRIVATE Curses::Curses)
+    add_executable(draw-curses-count curses_count.cpp)
     setup_target(draw-curses-count)
+    target_link_libraries(draw-curses-count PRIVATE draw Curses::Curses)
     add_test(NAME draw-curses-count COMMAND draw-curses-count -one-shot)
     set_property(TEST draw-curses-count PROPERTY ENVIRONMENT "TERM=dumb")
+
+    add_executable(draw-curses-rects curses_rect.cpp)
+    setup_target(draw-curses-rects)
+    target_link_libraries(draw-curses-rects PRIVATE draw Curses::Curses)
+    add_test(NAME draw-curses-rects COMMAND draw-curses-rects -j -f100)
   endif()
 
   add_executable(draw-time)

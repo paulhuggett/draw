@@ -64,7 +64,7 @@ int main() {
 
   point pos;
   for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {
-    auto const width = bitmap::char_width(font, code_point);
+    auto const width = static_cast<std::int16_t>(bitmap::char_width(font, code_point));
     if (pos.x + width > bm.width()) {
       pos.x = 0;
       pos.y += font.height * 8;

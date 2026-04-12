@@ -96,4 +96,10 @@ TEST(Rect, Union) {
   EXPECT_EQ(r4, (draw::rect{.top = 1, .left = 1, .bottom = 3, .right = 3}));
 }
 
+TEST(Rect, Offset) {
+  auto const r1 = draw::rect{.top = 1, .left = 2, .bottom = 3, .right = 4};
+  auto const r2 = r1.offset({.x = 2, .y = 1});
+  EXPECT_EQ(r2, (draw::rect{.top = 2, .left = 4, .bottom = 4, .right = 6}));
+}
+
 }  // end anonymous namespace

@@ -73,6 +73,13 @@ struct rect {
             .right = std::max(right, other.right)};
   }
 
+  [[nodiscard]] constexpr rect offset(point p) const noexcept {
+    return {.top = static_cast<coordinate>(top + p.y),
+            .left = static_cast<coordinate>(left + p.x),
+            .bottom = static_cast<coordinate>(bottom + p.y),
+            .right = static_cast<coordinate>(right + p.x)};
+  }
+
   /// Shrinks or expands the rectangle.
   ///
   /// The left and right sides are moved in by dx; the top and bottom in by dy.
