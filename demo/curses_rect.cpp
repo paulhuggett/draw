@@ -110,7 +110,12 @@ public:
     noecho();
     halfdelay(1);
   }
+  curses_bitmap_output(curses_bitmap_output const&) = delete;
+  curses_bitmap_output(curses_bitmap_output&&) noexcept = delete;
   ~curses_bitmap_output() noexcept override { endwin(); }
+
+  curses_bitmap_output & operator=(curses_bitmap_output const & ) = delete;
+  curses_bitmap_output & operator=(curses_bitmap_output && ) noexcept = delete;
 
 private:
   void print(char c, unsigned yb, unsigned xb) override {
