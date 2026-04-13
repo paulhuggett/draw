@@ -63,9 +63,10 @@ namespace {
 
 class bitmap_output {
 public:
-  bitmap_output(bitmap_output const & ) = default;
-  bitmap_output(bitmap_output && ) noexcept = default;
-  virtual ~bitmap_output() noexcept = default;
+  constexpr bitmap_output() = default;
+  constexpr bitmap_output(bitmap_output const&) = default;
+  constexpr bitmap_output(bitmap_output&&) noexcept = default;
+  constexpr virtual ~bitmap_output() noexcept = default;
 
   bitmap_output & operator=(bitmap_output const & ) = default;
   bitmap_output & operator=(bitmap_output && ) noexcept = default;
