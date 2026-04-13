@@ -50,7 +50,13 @@ if (DRAW_HOSTED)
     add_executable(draw-curses-rects curses_rect.cpp)
     setup_target(draw-curses-rects)
     target_link_libraries(draw-curses-rects PRIVATE draw Curses::Curses)
-    add_test(NAME draw-curses-rects COMMAND draw-curses-rects -j -f100)
+    # Run for 100 frames, producing JSON output
+    add_test(NAME draw-curses-rects-json COMMAND draw-curses-rects -j -f100)
+
+    # Run curses output for 100 frames. Set the box size to 3x3, the distance vector to [2,1],
+    # a 1ms delay between frames
+    add_test(NAME draw-curses-rects COMMAND draw-curses-rects -f100 -w3 -h3 -x2 -y1 -d1)
+    set_property(TEST draw-curses-rects PROPERTY ENVIRONMENT "TERM=dumb")
   endif()
 
   add_executable(draw-time)
