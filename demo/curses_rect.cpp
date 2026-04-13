@@ -95,14 +95,14 @@ public:
   }
 
 protected:
-  virtual void start_frame() {}
-  virtual void start_row() {}
+  virtual void start_frame() { /* do nothing */ }
+  virtual void start_row() { /* do nothing */ }
   virtual void print(char c, unsigned yb, unsigned xb) = 0;
-  virtual void end_row() {}
-  virtual void end_frame() {}
+  virtual void end_row() { /* do nothing */ }
+  virtual void end_frame() { /* do nothing */ }
 };
 
-class curses_bitmap_output : public bitmap_output {
+class curses_bitmap_output final : public bitmap_output {
 public:
   curses_bitmap_output()  {
     initscr();  // Refreshes stdscr
@@ -124,7 +124,7 @@ private:
   void end_frame() override { refresh(); }
 };
 
-class json_bitmap_output : public bitmap_output {
+class json_bitmap_output final : public bitmap_output {
 public:
   json_bitmap_output() { std::puts("["); }
   ~json_bitmap_output() noexcept override { std::puts("]"); }
