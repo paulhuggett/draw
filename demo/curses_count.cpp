@@ -45,6 +45,7 @@
 #include "draw/glyph_cache.hpp"
 #include "draw/sans16.hpp"
 #include "draw/sans32.hpp"
+#include "draw/text.hpp"
 #include "draw/types.hpp"
 
 using namespace std::string_view_literals;

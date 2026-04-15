@@ -40,6 +40,7 @@
 #include <iterator>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <version>
@@ -47,12 +48,10 @@
 #include <print>
 #endif
 
-// icubaby dependency
-#include "icubaby/icubaby.hpp"
-
 // Local includes
 #include "draw/font.hpp"
 #include "draw/glyph_cache.hpp"
+#include "draw/text.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 
@@ -109,6 +108,25 @@ void copy_row_aligned(unsigned src_x, unsigned const src_x_end, std::byte const*
 }
 
 // There's less than a byte to copy.
+#if 1
+void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
+                   unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
+  using namespace draw::literals;
+  assert(src_row != nullptr && "Source row must be supplied");
+  assert(dest_row != nullptr && "Destination row must be supplied");
+  assert(src_x % 8U != dest_x % 8U);
+  // There's less than a byte to copy.
+  // TODO: don't do this one pixel at a time.
+  auto const* const src = src_row + (src_x / 8U);
+  for (; src_x < src_x_end; ++src_x, ++dest_x) {
+    auto const src_bit = *src & (0x80_b >> (src_x % 8U));
+    auto const dest_bit = 0x80_b >> (dest_x % 8U);
+    auto const v = static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit;
+    transfer(dest_row + (dest_x / 8U), dest_bit, v, mode);
+  }
+}
+
+#else
 void copy_row_tiny(unsigned const src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
                    unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
   assert(src_row != nullptr && "Source row must be supplied");
@@ -142,6 +160,7 @@ void copy_row_tiny(unsigned const src_x, unsigned const src_x_end, std::byte con
     transfer(dest + 1U, overflow_mask, overflow_value, mode);
   }
 }
+#endif
 
 void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
                          unsigned dest_x, std::byte* const DRAW_NONNULL dest_row,
@@ -215,33 +234,6 @@ void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte con
   } else {
     copy_row_misaligned(src_x_init, src_x_end, src_row, dest_x, dest_row, mode);
   }
-}
-
-draw::coordinate glyph_spacing(draw::font const& f, draw::font::glyph const& g,
-                               std::optional<char32_t> prev_code_point) {
-  if (!prev_code_point.has_value()) {
-    return 0;
-  }
-  auto space = static_cast<draw::coordinate>(f.spacing);
-  auto const kerning_pairs = std::get<std::span<draw::kerning_pair const>>(g);
-  auto const kerning_pairs_end = std::end(kerning_pairs);
-  if (auto const kern_pos =
-          std::find_if(std::begin(kerning_pairs), kerning_pairs_end,
-                       [&prev_code_point](draw::kerning_pair const& kp) { return kp.preceding == prev_code_point; });
-      kern_pos != kerning_pairs_end) {
-    space -= static_cast<draw::coordinate>(kern_pos->distance);
-  }
-  return space;
-}
-
-template <typename DrawFn>
-draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t const code_point,
-                                 std::optional<char32_t> const prev_code_point, DrawFn&& draw) {
-  draw::font::glyph const* const g = f.find_glyph(code_point);
-  x += glyph_spacing(f, *g, prev_code_point);
-  std::invoke(std::forward<DrawFn>(draw), code_point, x);
-  x += f.width(*g);
-  return x;
 }
 
 }  // end anonymous namespace
@@ -481,44 +473,11 @@ void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point
   this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
 }
 
-template <typename DrawFn>
-static coordinate scan_string(font const& f, std::u8string_view s, DrawFn draw) {
-  auto x = coordinate{0};
-
-  std::optional<char32_t> prev_cp;
-
-  icubaby::t8_32 transcoder;
-  std::array<char32_t, 1U> code_point_buffer{};
-
-  auto const begin = std::begin(code_point_buffer);  // NOLINT(*-qualified-auto)
-  for (auto const cu : s) {
-    if (auto const it = transcoder(cu, begin); it != begin) {  // NOLINT(*-qualified-auto)
-      // We have a code point.
-      assert(std::distance(begin, it) == 1);
-      x = scan_code_point(x, f, *begin, prev_cp, draw);
-      prev_cp = *begin;
-    }
-  }
-  if (auto const it = transcoder.end_cp(begin); it != begin) {  // NOLINT(*-qualified-auto)
-    // We have a code point.
-    assert(std::distance(begin, it) == 1);
-    x = scan_code_point(x, f, *begin, prev_cp, draw);
-  }
-
-  return x;
-}
-
 point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos) {
   coordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, coordinate x) {
     this->draw_char(gc, f, code_point, {.x = static_cast<coordinate>(pos.x + x), .y = pos.y});
   });
   return {.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
-}
-
-coordinate string_width(font const& f, std::u8string_view s) {
-  return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) constexpr {
-    // do nothing
-  });
 }
 
 }  // end namespace draw

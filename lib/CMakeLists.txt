@@ -38,6 +38,7 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/plru_cache.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/text.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/tracer.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/types.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"

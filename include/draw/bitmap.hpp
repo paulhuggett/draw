@@ -124,7 +124,7 @@ public:
             .bottom = static_cast<coordinate>(height() - 1U),
             .right = static_cast<coordinate>(width() - 1U)};
   }
-  [[nodiscard]] constexpr std::optional<rect> dirty() const noexcept { return dirty_; }
+  [[nodiscard]] constexpr std::optional<rect> const& dirty() const noexcept { return dirty_; }
   constexpr void clean() noexcept { dirty_.reset(); }
 
   [[nodiscard]] constexpr std::span<std::byte const> store() const noexcept { return store_; }
@@ -180,8 +180,6 @@ extern pattern const black;
 extern pattern const white;
 extern pattern const gray;
 extern pattern const light_gray;
-
-coordinate string_width(font const& f, std::u8string_view s);
 
 }  // end namespace draw
 

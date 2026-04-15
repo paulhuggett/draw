@@ -50,12 +50,34 @@ if (DRAW_HOSTED)
     add_executable(draw-curses-rects curses_rect.cpp)
     setup_target(draw-curses-rects)
     target_link_libraries(draw-curses-rects PRIVATE draw Curses::Curses)
-    # Run for 100 frames, producing JSON output
-    add_test(NAME draw-curses-rects-json COMMAND draw-curses-rects -j -f100)
+
+    find_package(Python3)
+    if(NOT Python3_FOUND)
+      message(WARNING "Python3 was not found: the draw-curses-rects test is not available.")
+    else()
+      add_test(
+        NAME
+          draw-curses-rects-json
+        COMMAND
+          "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/curses_rect_compare.py"
+          "$<TARGET_FILE:draw-curses-rects>"
+          "${CMAKE_CURRENT_SOURCE_DIR}/expected.json"
+      )
+    endif(NOT Python3_FOUND)
 
     # Run curses output for 100 frames. Set the box size to 3x3, the distance vector to [2,1],
     # a 1ms delay between frames
-    add_test(NAME draw-curses-rects COMMAND draw-curses-rects -f100 -w3 -h3 -x2 -y1 -d1)
+    add_test(
+      NAME
+        draw-curses-rects
+      COMMAND
+        draw-curses-rects
+        -f 100     # frames
+        -w 3 -h 3  # box width/height
+        -x 2 -y 1  # distance vector x/y
+        -d 1       # inter-frame delay
+    )
     set_property(TEST draw-curses-rects PROPERTY ENVIRONMENT "TERM=dumb")
   endif()
 

@@ -51,6 +51,8 @@ consteval std::byte operator""_b(unsigned long long arg) noexcept {
 using coordinate = std::int16_t;
 
 struct point {
+  constexpr friend bool operator==(point const&, point const&) noexcept = default;
+
   coordinate x = 0;
   coordinate y = 0;
 };
@@ -66,6 +68,8 @@ struct rect {
   [[nodiscard]] constexpr coordinate width() const noexcept { return right > left ? right - left : 0; }
   [[nodiscard]] constexpr coordinate height() const noexcept { return bottom > top ? bottom - top : 0; }
 
+  [[nodiscard]] constexpr point top_left() const noexcept { return {.x = left, .y = top}; }
+  [[nodiscard]] constexpr point bot_right() const noexcept { return {.x = right, .y = bottom}; }
   [[nodiscard]] constexpr rect union_rect(rect const& other) const noexcept {
     return {.top = std::min(top, other.top),
             .left = std::min(left, other.left),

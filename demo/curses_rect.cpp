@@ -49,6 +49,9 @@
 
 // Draw
 #include "draw/bitmap.hpp"
+#include "draw/glyph_cache.hpp"
+#include "draw/sans16.hpp"
+#include "draw/text.hpp"
 
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
@@ -63,43 +66,37 @@ namespace {
 
 class bitmap_output {
 public:
-  constexpr bitmap_output() = default;
-  constexpr bitmap_output(bitmap_output const&) = default;
-  constexpr bitmap_output(bitmap_output&&) noexcept = default;
-  constexpr virtual ~bitmap_output() noexcept = default;
+  virtual ~bitmap_output() noexcept = default;
 
-  bitmap_output & operator=(bitmap_output const & ) = default;
-  bitmap_output & operator=(bitmap_output && ) noexcept = default;
+  void show_frame(bitmap const& bmp, rect update) {
+    // Clamp the update rect to the bounds of the bitmap.
+    update = {
+        .top = std::max(update.top, coordinate{0}),
+        .left = std::max(update.left, coordinate{0}),
+        .bottom = std::clamp(update.bottom, coordinate{0}, bmp.bounds().bottom),
+        .right = std::clamp(update.right, coordinate{0}, bmp.bounds().right),
+    };
 
-  void show_frame(bitmap const& bmp) {
     this->start_frame();
-    auto xb = 0U;  // The x ordinate (in bytes)
-    auto yb = 0U;
-    for (auto const d : bmp.store()) {
-      if (xb == 0U) {
-        this->start_row();
-      }
-      for (auto bit = 0U; bit < 8U; ++bit) {
+    auto const store_it = std::begin(bmp.store());
+    for (auto yb = static_cast<unsigned>(update.top); yb <= static_cast<unsigned>(update.bottom); ++yb) {
+      auto const yoffset = yb * bmp.stride();
+      for (auto xb = static_cast<unsigned>(update.left); xb <= static_cast<unsigned>(update.right); ++xb) {
+        auto const offset = yoffset + xb / 8U;
+        assert(offset < bmp.store().size());
+        auto const d = *(store_it + offset);
+        auto const bit = xb % 8U;
         auto const c = ((d & (0x80_b >> bit)) != 0_b ? 'X' : '.');
-        this->print(c, yb, (xb << 3) | bit);
-      }
-      ++xb;
-      if (xb >= bmp.stride()) {
-        // The end of a scan-line.
-        xb = 0U;
-        ++yb;
-        this->end_row();
+        this->print({.x = static_cast<coordinate>(xb), .y = static_cast<coordinate>(yb)}, c);
       }
     }
     this->end_frame();
   }
 
 protected:
-  virtual void start_frame() { /* do nothing */ }
-  virtual void start_row() { /* do nothing */ }
-  virtual void print(char c, unsigned yb, unsigned xb) = 0;
-  virtual void end_row() { /* do nothing */ }
-  virtual void end_frame() { /* do nothing */ }
+  virtual void start_frame() = 0;
+  virtual void print(point pos, char c) = 0;
+  virtual void end_frame() = 0;
 };
 
 class curses_bitmap_output final : public bitmap_output {
@@ -118,33 +115,47 @@ public:
   curses_bitmap_output & operator=(curses_bitmap_output && ) noexcept = delete;
 
 private:
-  void print(char c, unsigned yb, unsigned xb) override {
-    mvwprintw(stdscr, static_cast<int>(yb), static_cast<int>(xb), "%c", c);
-  }
+  void start_frame() override { /* do nothing */ }
+  void print(point pos, char c) override { mvwprintw(stdscr, pos.y, pos.x, "%c", c); }
   void end_frame() override { refresh(); }
 };
 
 class json_bitmap_output final : public bitmap_output {
 public:
   json_bitmap_output() { std::puts("["); }
-  ~json_bitmap_output() noexcept override { std::puts("]"); }
+  ~json_bitmap_output() noexcept override { std::puts("\n]"); }
 
 private:
   void start_frame() override {
     std::printf("%s[\n", frame_separator_);
-    row_separator_ = "\"";
+    row_separator_ = "";
     frame_separator_ = ", ";
   }
-  void start_row() override {
-    std::printf("%s", row_separator_);
-    row_separator_ = ",\n\"";
+  void print(point pos, char c) override {
+    if (pos.x != prev_.x + 1 || pos.y != prev_.y) {
+      this->flush();
+      start_ = pos;
+    }
+    row_ += c;
+    prev_ = pos;
   }
-  void print(char c, unsigned /*yb*/, unsigned /*xb*/) override { std::putchar(c); }
-  void end_row() override { std::putchar('"'); }
-  void end_frame() override { std::printf("\n]"); }
+  void end_frame() override {
+    this->flush();
+    std::printf("\n  ]");
+  }
 
+  void flush() {
+    if (row_.length() > 0) {
+      std::printf(R"(%s  { "location": [%d, %d], "pixels": "%s" })", row_separator_, start_.x, start_.y, row_.c_str());
+      row_separator_ = ",\n";
+      row_.clear();
+    }
+  }
   char const* frame_separator_ = "";
-  char const* row_separator_ = nullptr;
+  char const* row_separator_ = "";
+  std::string row_;
+  point prev_{.x = -1, .y = -1};
+  point start_{.x = -1, .y = -1};
 };
 
 std::unique_ptr<bitmap_output> make_output(bool const use_json) {
@@ -179,10 +190,10 @@ struct options {
       case 'd': delay = std::chrono::milliseconds{intarg(optarg)}; break;
       case 'f': frames = intarg(optarg); break;
       case 'j': json = true; break;
-      case 'w': box.x = static_cast<coordinate>(intarg(optarg)); break;
-      case 'h': box.y = static_cast<coordinate>(intarg(optarg)); break;
-      case 'x': vector.x = static_cast<coordinate>(intarg(optarg)); break;
-      case 'y': vector.y = static_cast<coordinate>(intarg(optarg)); break;
+      case 'w': box.x = std::max(static_cast<coordinate>(intarg(optarg)), coordinate{1}); break;
+      case 'h': box.y = std::max(static_cast<coordinate>(intarg(optarg)), coordinate{1}); break;
+      case 'x': vector.x = std::max(static_cast<coordinate>(intarg(optarg)), coordinate{1}); break;
+      case 'y': vector.y = std::max(static_cast<coordinate>(intarg(optarg)), coordinate{1}); break;
       default: usage(argv[0]); std::exit(EXIT_FAILURE);
       }
     }
@@ -208,6 +219,43 @@ struct options {
 
 }  // end anonymous namespace
 
+class drawable {
+public:
+  virtual ~drawable() noexcept = default;
+  virtual void draw(bitmap& dest, point origin) = 0;
+  [[nodiscard]] virtual point size() const = 0;
+};
+
+class text_drawable final : public drawable {
+public:
+  text_drawable() : str_{u8"Hello"sv}, glyph_cache_store_{draw::glyph_cache::get_size()}, gc_{glyph_cache_store_} {}
+  void draw(bitmap& dest, point origin) override { dest.draw_string(gc_, font, str_, origin); }
+  [[nodiscard]] point size() const override {
+    return {.x = draw::string_width(font, str_), .y = static_cast<coordinate>(font.height * 8U)};
+  }
+
+private:
+  static draw::font const& font;
+  std::u8string_view str_;
+  std::vector<std::byte> glyph_cache_store_;
+  draw::glyph_cache gc_;
+};
+
+draw::font const& text_drawable::font = sans16;
+
+class rect_drawable final : public drawable {
+public:
+  constexpr explicit rect_drawable(point size) : size_{size} {}
+  void draw(bitmap& dest, point origin) override {
+    rect const r{.top = 0, .left = 0, .bottom = size_.y, .right = size_.x};
+    dest.paint_rect(r.offset(origin), draw::black);
+  }
+  [[nodiscard]] point size() const override { return size_; }
+
+private:
+  point size_;
+};
+
 int main(int argc, char* argv[]) {
   constexpr auto frame = point{.x = 128, .y = 32};
   static constexpr auto& background = draw::white;
@@ -219,21 +267,29 @@ int main(int argc, char* argv[]) {
 
   auto frame_buffer = bitmap{frame_store, frame.x, frame.y};
   frame_buffer.paint_rect({.top = 0, .left = 0, .bottom = frame.y - 1, .right = frame.x - 1}, background);
-  draw::rect r{.top = 0, .left = 0, .bottom = opts.box.y, .right = opts.box.x};
-  draw::point vector{.x = opts.vector.x, .y = opts.vector.y};
-  r = r.offset(vector);
+
+  text_drawable draw;
+  draw::point const size = draw.size();
+  rect r{.top = 0, .left = 0, .bottom = size.y, .right = size.x};
+  draw.draw(frame_buffer, r.top_left());
+  r = r.offset(opts.vector);
   auto until = std::chrono::system_clock::now() + opts.delay;
   for (;;) {
-    std::tie(r, vector) = nudge<frame.x, frame.y>(r, vector);
+    std::tie(r, opts.vector) = nudge<frame.x, frame.y>(r, opts.vector);
+    std::optional<rect> update;
     if (auto const& d = frame_buffer.dirty()) {
+      assert(d->right <= frame.x);
+      assert(d->bottom <= frame.y);
+      update = *d;
       frame_buffer.paint_rect(*d, background);
       frame_buffer.clean();
     }
-    frame_buffer.paint_rect(r, draw::black);
 
-    output->show_frame(frame_buffer);
+    draw.draw(frame_buffer, r.top_left());
+
+    output->show_frame(frame_buffer, update ? update->union_rect(r) : r);
     if (opts.frames > 0) {
-      --(opts.frames);
+      --opts.frames;
       if (opts.frames == 0) {
         break;
       }
