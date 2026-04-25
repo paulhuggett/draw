@@ -30,7 +30,9 @@
 //===----------------------------------------------------------------------===//
 
 // DUT
+#include "draw/all_fonts.hpp"
 #include "draw/bitmap.hpp"
+#include "draw/font.hpp"
 #include "draw/glyph_cache.hpp"
 #include "draw/sans16.hpp"
 #include "draw/types.hpp"
@@ -49,13 +51,57 @@ namespace {
 
 using testing::ElementsAre;
 
+TEST(DrawChar, Basic) {
+  using namespace draw::literals;
+
+  static constexpr std::array bitmap_0020 = {
+      0b01010101_b,
+      0b10101010_b,  // column 0
+      0b10101010_b,
+      0b01010101_b,  // column 1
+  };
+  constexpr draw::font const minimal{.id = 0xFF,
+                                     .baseline = 12,
+                                     .widest = 1,
+                                     .height = 2,
+                                     .spacing = 1,
+                                     .glyphs = draw::font::glyph_map{
+                                         {0x20, draw::glyph{decltype(draw::glyph::kerns)::from_array(draw::empty_kern),
+                                                            decltype(draw::glyph::bm)::from_array(bitmap_0020)}},
+                                     }};
+  auto [store, bmp] = create_bitmap_and_store(8U, 16U);
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(minimal), std::byte{0U}};
+  draw::glyph_cache gc{std::ranges::subrange{&minimal, &minimal + 1}, glyph_cache_store};
+  constexpr auto character = char32_t{0x20};
+  bmp.draw_char(gc, minimal, character, draw::point{.x = 0, .y = 0});
+  EXPECT_THAT(bmp.store(), ElementsAre(0b10000000_b,  // [0]
+                                       0b01000000_b,  // [1]
+                                       0b10000000_b,  // [2]
+                                       0b01000000_b,  // [3]
+                                       0b10000000_b,  // [4]
+                                       0b01000000_b,  // [5]
+                                       0b10000000_b,  // [6]
+                                       0b01000000_b,  // [7]
+                                       0b10000000_b,  // [8]
+                                       0b01000000_b,  // [9]
+                                       0b10000000_b,  // [10]
+                                       0b01000000_b,  // [11]
+                                       0b10000000_b,  // [12]
+                                       0b01000000_b,  // [13]
+                                       0b10000000_b,  // [14]
+                                       0b01000000_b   // [15]
+                                       ));
+  EXPECT_EQ(bmp.dirty(), gc.get(minimal, character).bounds());
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 1}));
+}
+
 TEST(DrawChar, A) {
   using namespace draw::literals;
 
   auto [store, bmp] = create_bitmap_and_store(16U, 16U);
-  std::vector glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
-  constexpr auto const& font = sans16;
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
+  draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
+  constexpr auto const& font = draw::sans16;
   constexpr auto character = U'A';
   bmp.draw_char(gc, font, character, draw::point{.x = 0, .y = 0});
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
@@ -82,14 +128,15 @@ TEST(DrawChar, Sans32A_Sans16A) {
   using namespace draw::literals;
 
   auto [store, bmp] = create_bitmap_and_store(32U, 32U);
-  std::vector glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
+  draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
   constexpr auto character = U'A';
-  bmp.draw_char(gc, sans16, character, draw::point{.x = 0, .y = 0});
-  EXPECT_EQ(bmp.dirty(), gc.get(sans16, character).bounds());
+  bmp.draw_char(gc, draw::sans16, character, draw::point{.x = 0, .y = 0});
+  EXPECT_EQ(bmp.dirty(), gc.get(draw::sans16, character).bounds());
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
-  bmp.draw_char(gc, sans32, character,
-                draw::point{.x = static_cast<draw::coordinate>(draw::bitmap::char_width(sans16, character)), .y = 0});
+  bmp.draw_char(
+      gc, draw::sans32, character,
+      draw::point{.x = static_cast<draw::coordinate>(draw::bitmap::char_width(draw::sans16, character)), .y = 0});
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]

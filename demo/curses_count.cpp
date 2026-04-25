@@ -120,8 +120,8 @@ int main(int argc, char* argv[]) {
   constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
+  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(sans32), std::byte{0U}};
+  draw::glyph_cache gc{sans32, glyph_cache_store};
 
   auto count = 0;
   auto swidth = 0;

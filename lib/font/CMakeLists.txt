@@ -37,9 +37,7 @@ add_custom_command(
   COMMAND
     "${Python3_EXECUTABLE}" font.py -o "${CMAKE_CURRENT_BINARY_DIR}/draw" sans_font/32/sans32.json
   OUTPUT
-    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.hpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.hpp"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Building Sans Font"
@@ -67,11 +65,9 @@ add_custom_command(
     sans_font/32/basic_latin-0020-002F.png
     sans_font/32/basic_latin-0030-003F.png
 )
-add_library(draw-font STATIC )
+add_library(draw-font OBJECT )
 target_sources(draw-font PRIVATE
-  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.cpp"
   "${CMAKE_CURRENT_BINARY_DIR}/draw/sans16.hpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.cpp"
   "${CMAKE_CURRENT_BINARY_DIR}/draw/sans32.hpp"
   font.py
   sans_font/16/sans16.json
@@ -85,4 +81,5 @@ target_include_directories(draw-font
   PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+set_target_properties(draw-font PROPERTIES LINKER_LANGUAGE CXX)
 setup_target(draw-font)

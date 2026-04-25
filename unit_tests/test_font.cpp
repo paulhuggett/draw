@@ -30,8 +30,8 @@
 //===----------------------------------------------------------------------===//
 
 // DUT
+#include "draw/all_fonts.hpp"
 #include "draw/font.hpp"
-#include "draw/sans16.hpp"
 #include "draw/types.hpp"
 
 // Standard library
@@ -48,27 +48,28 @@ using draw::font;
 using testing::ElementsAre;
 
 TEST(Font, FindGlyphLatinSmallLetterA) {
-  font::glyph const* const g = sans16.find_glyph(U'a');
+  draw::glyph const* const g = draw::sans16.find_glyph(U'a');
   ASSERT_NE(g, nullptr);
-  EXPECT_TRUE(std::get<font::kerning_pairs>(*g).empty());
-  EXPECT_THAT(std::get<font::bytes>(*g), ElementsAre(0x80_b, 0x0C_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b,
-                                                     0x80_b, 0x1F_b, 0x00_b, 0x10_b));
+  EXPECT_TRUE(g->kerns.empty());
+  EXPECT_THAT(g->bm, ElementsAre(0x80_b, 0x0C_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b, 0x40_b, 0x12_b, 0x80_b, 0x1F_b, 0x00_b,
+                                 0x10_b));
 }
 
 TEST(Font, FindMissingGlyph) {
-  EXPECT_EQ(sans16.find_glyph(char32_t{0x0600U}), sans16.find_glyph(draw::white_square));
+  EXPECT_EQ(draw::sans16.find_glyph(char32_t{0x0600U}), draw::sans16.find_glyph(draw::white_square));
 }
 
 TEST(Font, FindMissingGlyphNoWhiteSqaure) {
-  constexpr std::array bitmap_0020 = {0x00_b, 0x00_b, 0x00_b, 0x00_b};
-  font const minimal{.id = 0xFF,
-                     .baseline = 12,
-                     .widest = 1,
-                     .height = 2,
-                     .spacing = 1,
-                     .glyphs = draw::font::glyph_map{
-                         {0x20, font::glyph{draw::empty_kern, bitmap_0020}},
-                     }};
+  static constexpr std::array bitmap_0020 = {0x00_b, 0x00_b, 0x00_b, 0x00_b};
+  static constexpr font const minimal{.id = 0xFF,
+                                      .baseline = 12,
+                                      .widest = 1,
+                                      .height = 2,
+                                      .spacing = 1,
+                                      .glyphs = draw::font::glyph_map{
+                                          {0x20, draw::glyph{decltype(draw::glyph::kerns)::from_array(draw::empty_kern),
+                                                             decltype(draw::glyph::bm)::from_array(bitmap_0020)}},
+                                      }};
   EXPECT_EQ(minimal.find_glyph(char32_t{0x0600U}), minimal.find_glyph(char32_t{0x20U}));
 }
 

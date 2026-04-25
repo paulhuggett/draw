@@ -55,12 +55,6 @@
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 
-#if defined(__clang__) && __clang__
-#define DRAW_NONNULL _Nonnull
-#else
-#define DRAW_NONNULL
-#endif
-
 namespace {
 
 // TODO: Add a SIMD implementation? Check what the compiler already does.
@@ -461,7 +455,7 @@ void bitmap::paint_rect(rect const& r, pattern const& pat) {
 }
 
 std::uint16_t bitmap::char_width(font const& f, char32_t code_point) {
-  font::glyph const* const g = f.find_glyph(code_point);
+  glyph const* const g = f.find_glyph(code_point);
   assert(g != nullptr);
   return f.width(*g);
 }
