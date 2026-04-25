@@ -174,20 +174,6 @@ def dump_char(glyph:Union[Tuple[int, ...], int], height:int) -> None:
         print()
 
 
-def write_header_file(output_dir:pathlib.Path, definition:Dict[str, Any]) -> None:
-    name:str = definition['name']
-    if name.find(os.sep) != -1:
-        raise RuntimeError(f'font name ("{name}") must not contain a path separator')
-    with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as header:
-        guard = 'DRAW_FONT_' + name.upper() + '_HPP'
-        header.write(f'''{SIGNATURE}
-#ifndef {guard}
-#define {guard}
-namespace draw {{ struct font; }}
-extern draw::font const {name};
-#endif // {guard}
-''')
-
 KernDictValue = List[Tuple[int, int]]
 KernDict = Dict[int, KernDictValue]
 
@@ -195,7 +181,7 @@ def write_kerning_pairs(source:typing.TextIO, k:int, kdv:KernDictValue) -> None:
     source.write(f'constexpr std::array kern_{k:04x} = {{')
     separator = ''
     for prev_cp, distance in kdv:
-        source.write(f'{separator}kerning_pair{{.preceding={prev_cp},.distance={distance}}}')
+        source.write(f'{separator}kerning_pair{{.preceding={prev_cp},.pad=0,.distance={distance}}}')
         separator = ','
     source.write('};\n')
 
@@ -204,7 +190,7 @@ def write_bitmap_data(source:typing.TextIO, k:int, data:Tuple[int, ...]) -> None
     source.write(f'constexpr std::array bitmap_{k:04x} = {{')
     separator = ''
     for value in data:
-        source.write(f'{separator}{value:#04x}_b')
+        source.write(f'{separator}std::byte{{{value:#04x}}}')
         separator = ','
     source.write('};\n')
 
@@ -219,18 +205,19 @@ def write_source_file(font:FontDict,
     spacing = int(definition['spacing'])
     if name.find(os.sep) != -1:
         raise RuntimeError(f'font name ("{name}") must not contain a path separator')
-    with open(os.path.join(output_dir, name + '.cpp'), 'w', encoding='utf-8') as source:
+    with open(os.path.join(output_dir, name + '.hpp'), 'w', encoding='utf-8') as source:
+        guard = 'DRAW_FONT_' + name.upper() + '_HPP'
+        data_ns = name + '_data'
         source.write(SIGNATURE)
-        source.write(f'#include "{name}.hpp"\n')
-        source.write('''
-#include "draw/font.hpp"
-#include "draw/types.hpp"
+        source.write(f'''
+#ifndef {guard}
+#define {guard}
 #include <array>
 #include <cassert>
-using namespace draw::literals;
-using draw::kerning_pair;
-using glyph = draw::font::glyph;
-namespace {
+#include "draw/font.hpp"
+#include "draw/types.hpp"
+namespace draw {{
+namespace {data_ns} {{
 ''')
         widest = 0
         baseline = 32 - 8
@@ -242,14 +229,15 @@ namespace {
                 widest = max(widest, len(v) // height)
                 write_bitmap_data(source, k, v)
 
-        source.write(f'''}} // end anonymous namespace
-draw::font const {name} {{
+        source.write(f'''
+}} // end namespace {data_ns}
+constexpr font const {name} {{
   .id={fid},
   .baseline={baseline},
   .widest={widest},
   .height={height},
   .spacing={spacing},
-  .glyphs=draw::font::glyph_map{{
+  .glyphs={{
 ''')
         for k, v in font.items():
             kname = unicodedata.name(chr(k), '')
@@ -258,9 +246,11 @@ draw::font const {name} {{
 
             # If the value is an integer, this is a reference to a previous glyph.
             bm = v if isinstance(v, int) else k
-            kp_name = f'kern_{k:04x}' if k in kd else 'draw::empty_kern'
-            source.write(f'    {{ {k:#04x}, glyph{{{kp_name}, bitmap_{bm:04x}}} }},{kname}\n')
+            kp_name = f'{data_ns}::kern_{k:04x}' if k in kd else 'draw::empty_kern'
+            source.write(f'    {{ {k:#04x}, glyph{{.kerns = decltype(draw::glyph::kerns)::from_array({kp_name}), .bm = decltype(draw::glyph::bm)::from_array({data_ns}::bitmap_{bm:04x})}} }},{kname}\n')
         source.write('  }\n};\n')
+        source.write('} // end namespace draw\n')
+        source.write(f'#endif // {guard}\n')
 
 
 def str_to_cp(s) -> int:
@@ -327,7 +317,6 @@ def main() -> int:
 
     if args.samples:
         samples(font, height)
-    write_header_file(args.output_dir, definition)
     write_source_file(font,
                       kern_pairs(definition.get('kern', {})),
                       height,

@@ -59,8 +59,8 @@ int main() {
   constexpr auto frame_height = std::uint16_t{32U};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap bm{frame_store, frame_width, frame_height};
-  std::vector glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
+  draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
 
   point pos;
   for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {

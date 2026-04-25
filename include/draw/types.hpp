@@ -37,6 +37,12 @@
 #include <cstddef>
 #include <cstdint>
 
+#if defined(__clang__) && __clang__
+#define DRAW_NONNULL _Nonnull
+#else
+#define DRAW_NONNULL
+#endif
+
 namespace draw {
 
 namespace literals {

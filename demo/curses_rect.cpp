@@ -228,7 +228,10 @@ public:
 
 class text_drawable final : public drawable {
 public:
-  text_drawable() : str_{u8"Hello"sv}, glyph_cache_store_{draw::glyph_cache::get_size()}, gc_{glyph_cache_store_} {}
+  text_drawable()
+      : str_{u8"Hello"sv},
+        glyph_cache_store_{draw::glyph_cache::get_size(draw::all_fonts)},
+        gc_{draw::all_fonts, glyph_cache_store_} {}
   void draw(bitmap& dest, point origin) override { dest.draw_string(gc_, font, str_, origin); }
   [[nodiscard]] point size() const override {
     return {.x = draw::string_width(font, str_), .y = static_cast<coordinate>(font.height * 8U)};
