@@ -119,7 +119,7 @@ class iumap {
 
     template <typename... Args>
     constexpr void construct(Args&&... args) noexcept {
-      storage.~T();
+      std::destroy_at(&storage);
       std::construct_at(&storage, std::forward<Args>(args)...);
       state = state::occupied;
     }
