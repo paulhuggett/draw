@@ -60,19 +60,20 @@ TEST(DrawChar, Basic) {
       0b10101010_b,
       0b01010101_b,  // column 1
   };
-  constexpr draw::font const minimal{.id = 0xFF,
-                                     .baseline = 12,
-                                     .widest = 1,
-                                     .height = 2,
-                                     .spacing = 1,
-                                     .glyphs = draw::font::glyph_map{
-                                         {0x20, draw::glyph{decltype(draw::glyph::kerns)::from_array(draw::empty_kern),
-                                                            decltype(draw::glyph::bm)::from_array(bitmap_0020)}},
-                                     }};
+  constexpr auto character = char32_t{0x20};
+  constexpr draw::font const minimal{
+      .id = 0xFF,
+      .baseline = 12,
+      .widest = 1,
+      .height = 2,
+      .spacing = 1,
+      .glyphs = draw::font::glyph_map{
+          {character, draw::glyph{decltype(draw::glyph::kerns)::from_array(draw::empty_kern),
+                                  decltype(draw::glyph::bm)::from_array(bitmap_0020)}},
+      }};
   auto [store, bmp] = create_bitmap_and_store(8U, 16U);
   std::vector glyph_cache_store{draw::glyph_cache::get_size(minimal), std::byte{0U}};
   draw::glyph_cache gc{std::ranges::subrange{&minimal, &minimal + 1}, glyph_cache_store};
-  constexpr auto character = char32_t{0x20};
   bmp.draw_char(gc, minimal, character, draw::point{.x = 0, .y = 0});
   EXPECT_THAT(bmp.store(), ElementsAre(0b10000000_b,  // [0]
                                        0b01000000_b,  // [1]
@@ -82,14 +83,14 @@ TEST(DrawChar, Basic) {
                                        0b01000000_b,  // [5]
                                        0b10000000_b,  // [6]
                                        0b01000000_b,  // [7]
-                                       0b10000000_b,  // [8]
-                                       0b01000000_b,  // [9]
-                                       0b10000000_b,  // [10]
-                                       0b01000000_b,  // [11]
-                                       0b10000000_b,  // [12]
-                                       0b01000000_b,  // [13]
-                                       0b10000000_b,  // [14]
-                                       0b01000000_b   // [15]
+                                       0b01000000_b,  // [8]
+                                       0b10000000_b,  // [9]
+                                       0b01000000_b,  // [10]
+                                       0b10000000_b,  // [11]
+                                       0b01000000_b,  // [12]
+                                       0b10000000_b,  // [13]
+                                       0b01000000_b,  // [14]
+                                       0b10000000_b   // [15]
                                        ));
   EXPECT_EQ(bmp.dirty(), gc.get(minimal, character).bounds());
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 1}));
