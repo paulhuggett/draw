@@ -47,7 +47,7 @@ class glyph_cache {
 private:
   template <std::ranges::input_range FontsRange>
   [[nodiscard]] static constexpr std::size_t get_store_size(FontsRange&& fonts) noexcept {
-    return std::ranges::max(fonts | std::views::transform(glyph_cache::get_font_store_size));
+    return std::ranges::max(std::forward<FontsRange>(fonts) | std::views::transform(glyph_cache::get_font_store_size));
   }
 
 public:
