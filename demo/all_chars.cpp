@@ -34,7 +34,6 @@
 #include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
 #include "draw/sans16.hpp"
-#include "draw/sans32.hpp"
 #include "draw/types.hpp"
 
 namespace {
@@ -59,11 +58,12 @@ int main() {
   constexpr auto frame_height = std::uint16_t{32U};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap bm{frame_store, frame_width, frame_height};
-  std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
-  draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
+  static auto const& font = draw::sans16;
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(font), std::byte{0U}};
+  draw::glyph_cache gc{font, glyph_cache_store};
 
   point pos;
-  for (auto const& font = sans16; auto const code_point : sorted_code_points(font)) {
+  for (auto const code_point : sorted_code_points(font)) {
     auto const width = static_cast<std::int16_t>(bitmap::char_width(font, code_point));
     if (pos.x + width > bm.width()) {
       pos.x = 0;
@@ -73,7 +73,7 @@ int main() {
       }
     }
 
-    bm.draw_char(gc, sans16, code_point, pos);
+    bm.draw_char(gc, font, code_point, pos);
     pos.x += width + 1;
   }
 #if defined(DRAW_HOSTED) && DRAW_HOSTED

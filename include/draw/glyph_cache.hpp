@@ -44,6 +44,12 @@
 namespace draw {
 
 class glyph_cache {
+private:
+  template <std::ranges::input_range FontsRange>
+  [[nodiscard]] static constexpr std::size_t get_store_size(FontsRange&& fonts) noexcept {
+    return std::ranges::max(fonts | std::views::transform(glyph_cache::get_font_store_size));
+  }
+
 public:
   template <std::ranges::input_range Range>
     requires std::is_same_v<
@@ -64,20 +70,16 @@ public:
     requires std::is_same_v<
         std::remove_cvref_t<std::unwrap_reference_t<std::ranges::range_value_t<std::remove_cvref_t<FontsRange>>>>, font>
   [[nodiscard]] static constexpr std::size_t get_size(FontsRange&& fonts) noexcept {
-    return decltype(cache_)::max_size() * get_store_size(std::forward<FontsRange>(fonts));
+    return decltype(cache_)::max_size() * glyph_cache::get_store_size(std::forward<FontsRange>(fonts));
   }
   [[nodiscard]] static constexpr std::size_t get_size(font const& f) noexcept {
-    return get_size(std::ranges::views::single(std::cref(f)));
+    auto const fonts = std::ranges::views::single(std::cref(f));
+    return get_size(fonts);
   }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
-
-  template <std::ranges::input_range FontsRange>
-  [[nodiscard]] static constexpr std::size_t get_store_size(FontsRange const& fonts) noexcept {
-    return std::ranges::max(fonts | std::views::transform(glyph_cache::get_font_store_size));
-  }
 
   /// Returns the number of bytes required for the largest glyph in the supplied font.
   [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {

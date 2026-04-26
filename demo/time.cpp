@@ -53,10 +53,11 @@ int main() {
 
   constexpr auto frame_width = std::uint16_t{128U};
   constexpr auto frame_height = std::uint16_t{32U};
-  constexpr auto& font = sans32;
+  static constexpr auto const& font = draw::sans32;
 
   // Storage for the glyph cache. Allocate enough space for the largest glyph in the font.
-  static std::array<std::byte, draw::glyph_cache::get_size(sans32)> glyph_cache_store;
+  static constexpr auto gc_store_size = draw::glyph_cache::get_size(font);
+  static std::array<std::byte, gc_store_size> glyph_cache_store;
   // Now the glyph cache itself.
   static draw::glyph_cache gc{font, glyph_cache_store};
 
