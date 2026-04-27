@@ -204,7 +204,7 @@ struct options {
     }
   }
 
-  void usage(char const* proc) {
+  static void usage(char const* proc) {
     std::printf("Usage: %s [options]\n", proc);
     std::printf(R"(
   -d<n>  Inter-frame delay in milliseconds (default=50ms)
@@ -217,7 +217,7 @@ struct options {
   )");
   }
 
-  int intarg(char const* arg) { return static_cast<int>(std::strtol(arg, nullptr, 10)); }
+  [[nodiscard]] static int intarg(char const* arg) { return static_cast<int>(std::strtol(arg, nullptr, 10)); }
 };
 
 }  // end anonymous namespace
