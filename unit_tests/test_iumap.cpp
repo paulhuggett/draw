@@ -405,12 +405,17 @@ void Thrash(std::vector<int> const& in, std::vector<int> const& del) {
 #if defined(DRAW_FUZZTEST) && DRAW_FUZZTEST
 FUZZ_TEST(IUMap, Thrash);
 #endif
-TEST(IUMap, ThreashNone) {
+TEST(IUMap, ThrashNone) {
   Thrash(std::vector<int>{}, std::vector<int>{});
+}
+TEST(IUMap, ThrashOne) {
+  Thrash(std::vector<int>{1}, std::vector<int>{1});
+  Thrash(std::vector<int>{1}, std::vector<int>{});
+  Thrash(std::vector<int>{}, std::vector<int>{1});
 }
 
 TEST(IUMapConstexpr, Empty) {
-  constexpr draw::iumap<int, int, 8> h;
+  constexpr draw::iumap<int, int, 8> h{};
   EXPECT_EQ(h.size(), 0U);
   EXPECT_EQ(h.max_size(), 8U);
   EXPECT_EQ(h.capacity(), 8U);
@@ -421,7 +426,8 @@ TEST(IUMapConstexpr, Empty) {
 TEST(IUMapConstexpr, CtorInitializerList) {
   constexpr draw::iumap<int, int, 8> h{{1, 10}, {2, 20}, {3, 30}};
   using value_type = decltype(h)::value_type;
-  ASSERT_EQ(h.size(), 3U);
+  EXPECT_EQ(h.size(), 3U);
+  EXPECT_FALSE(h.empty());
 
   ASSERT_NE(h.find(1), h.end());
   EXPECT_EQ(*h.find(1), (value_type{1, 10}));
