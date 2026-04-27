@@ -60,7 +60,7 @@ namespace details {
 ///
 /// \param n An integer value to check whether it is a power of two.
 /// \returns True if the input value is a power of 2.
-[[nodiscard]] constexpr auto is_power_of_two(std::unsigned_integral auto const n) noexcept -> bool {
+[[nodiscard]] consteval auto is_power_of_two(std::unsigned_integral auto const n) noexcept -> bool {
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
   return std::has_single_bit(n);
 #else
@@ -79,6 +79,8 @@ concept mappable = requires(Key&& k) {
   { Hash{}(k) } -> std::convertible_to<std::size_t>;
 };
 
+/// A hash function which provides constexpr implementations for selected types and falls back to std::hash when
+/// necessary.
 template <typename T>
 struct hash {
   std::size_t operator()(T const& t) const { return std::hash<T>{}(t); }
