@@ -125,7 +125,10 @@ class iumap {
       std::construct_at(&storage, std::forward<Args>(args)...);
       state = state::occupied;
     }
-    constexpr void destroy() noexcept {}
+    constexpr void destroy() noexcept {
+      // This function destroys the contained value, if present.
+      // There's nothing to do in this instance.
+    }
 
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
     [[nodiscard]] constexpr auto* pointer(this auto& self) noexcept { return &self.storage; }
