@@ -123,7 +123,12 @@ private:
 class json_bitmap_output final : public bitmap_output {
 public:
   json_bitmap_output() { std::puts("["); }
+  json_bitmap_output(json_bitmap_output const&) = delete;
+  json_bitmap_output(json_bitmap_output&&) noexcept = delete;
   ~json_bitmap_output() noexcept override { std::puts("\n]"); }
+
+  json_bitmap_output& operator=(json_bitmap_output const&) = delete;
+  json_bitmap_output& operator=(json_bitmap_output&&) noexcept = delete;
 
 private:
   void start_frame() override {
