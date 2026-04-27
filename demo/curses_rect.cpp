@@ -197,8 +197,6 @@ struct options {
       default: usage(argv[0]); std::exit(EXIT_FAILURE);
       }
     }
-    argc -= optind;
-    argv += optind;
   }
 
   void usage(char const* proc) {
