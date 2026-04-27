@@ -226,7 +226,6 @@ public:
 
 class text_drawable final : public drawable {
 public:
-  text_drawable() : str_{u8"Hello"sv} {}
   void draw(bitmap& dest, point origin) override { dest.draw_string(gc_, font, str_, origin); }
   [[nodiscard]] point size() const override {
     return {.x = draw::string_width(font, str_), .y = static_cast<coordinate>(font.height * 8U)};
@@ -234,7 +233,7 @@ public:
 
 private:
   draw::font const& font = draw::sans16;
-  std::u8string_view str_;
+  std::u8string_view str_ = u8"Hello"sv;
   std::vector<std::byte> glyph_cache_store_{draw::glyph_cache::get_size(draw::all_fonts)};
   draw::glyph_cache gc_{draw::all_fonts, glyph_cache_store_};
 };
