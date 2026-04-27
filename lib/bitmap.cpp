@@ -115,6 +115,8 @@ void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* co
   for (; src_x < src_x_end; ++src_x, ++dest_x) {
     auto const src_bit = *src & (0x80_b >> (src_x % 8U));
     auto const dest_bit = 0x80_b >> (dest_x % 8U);
+    // Conditionally set or clear bits without branching
+    // https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching
     auto const v = static_cast<std::byte>(-static_cast<unsigned>(src_bit != 0_b)) & dest_bit;
     transfer(dest_row + (dest_x / 8U), dest_bit, v, mode);
   }
