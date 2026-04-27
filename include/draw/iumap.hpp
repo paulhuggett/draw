@@ -79,6 +79,21 @@ concept mappable = requires(Key&& k) {
   { Hash{}(k) } -> std::convertible_to<std::size_t>;
 };
 
+template <typename T>
+struct hash {
+  std::size_t operator()(T const& t) const { return std::hash<T>{}(t); }
+};
+template <std::integral T>
+struct hash<T> {
+  constexpr std::size_t operator()(T const t) const noexcept { return static_cast<std::size_t>(t); }
+};
+template <typename T>
+  requires std::is_enum_v<T>
+struct hash<T> {
+  constexpr std::size_t operator()(T const t) const noexcept { return hash{}(std::to_underlying(t)); }
+};
+static_assert(std::integral<char32_t>);
+
 /// An in-place unordered hash table.
 ///
 /// \tparam Key  The key type
@@ -86,12 +101,123 @@ concept mappable = requires(Key&& k) {
 /// \tparam Size  The number of key/value pairs that can be stored in the container
 /// \tparam Hash  The type used to hash keys
 /// \tparam KeyEqual  The type used to compare keys
-template <typename Key, typename Mapped, std::size_t Size, typename Hash = std::hash<std::remove_cv_t<Key>>,
+template <typename Key, typename Mapped, std::size_t Size, typename Hash = hash<std::remove_cv_t<Key>>,
           typename KeyEqual = std::equal_to<Key>>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 class iumap {
   friend class iterator;
+  enum class state : std::uint8_t { occupied, tombstone, unused };
+  template <typename T, bool IsTrivial>
   struct member;
+
+  template <typename T>
+  struct member<T, true> {
+    using type = std::remove_const_t<T>;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    enum state state = state::unused;
+    T storage;
+
+    template <typename... Args>
+    constexpr void construct(Args&&... args) noexcept {
+      std::destroy_at(&storage);
+      std::construct_at(&storage, std::forward<Args>(args)...);
+      state = state::occupied;
+    }
+    constexpr void destroy() noexcept {}
+
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
+    [[nodiscard]] constexpr auto* pointer(this auto& self) noexcept { return &self.storage; }
+    [[nodiscard]] constexpr auto& reference(this auto& self) noexcept { return self.storage; }
+#else
+    [[nodiscard]] constexpr auto* pointer() noexcept { return &this->storage; }
+    [[nodiscard]] constexpr auto const* pointer() const noexcept { return &this->storage; }
+    [[nodiscard]] constexpr auto& reference() noexcept { return this->storage; }
+    [[nodiscard]] constexpr auto const& reference() const noexcept { return this->storage; }
+#endif
+  };
+
+  template <typename T>
+  struct member<T, false> {
+    using type = std::remove_const_t<T>;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    enum state state = state::unused;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,misc-non-private-member-variables-in-classes)
+    alignas(T) std::byte storage[sizeof(T)]{};
+
+    constexpr member() noexcept = default;
+    member(member const& other) noexcept(std::is_nothrow_copy_constructible_v<value_type>) : state{other.state} {
+      if (state == state::occupied) {
+        std::construct_at(this->pointer(), *other.pointer());
+      }
+    }
+    member(member&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>) : state{other.state} {
+      if (state == state::occupied) {
+        std::construct_at(this->pointer(), std::move(*other.pointer()));
+      }
+    }
+    ~member() noexcept { this->destroy(); }
+
+    member& operator=(member const& other) noexcept(std::is_nothrow_copy_constructible_v<value_type>) {
+      if (this == &other) {
+        return *this;
+      }
+      this->destroy();
+      if (other.state == state::occupied) {
+        std::construct_at(this->pointer(), other.reference());
+      }
+      state = other.state;
+      return *this;
+    }
+    member& operator=(member&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>) {
+      if (this == &other) {
+        return *this;
+      }
+      this->destroy();
+      if (other.state == state::occupied) {
+        std::construct_at(this->pointer(), std::move(other.reference()));
+      }
+      state = other.state;
+      return *this;
+    }
+
+    template <typename... Args>
+    constexpr void construct(Args&&... args) noexcept {
+      this->destroy();
+      std::construct_at(this->pointer(), std::forward<Args>(args)...);
+      state = state::occupied;
+    }
+
+    void destroy() noexcept {
+      if (state == state::occupied) {
+        std::destroy_at(this->pointer());
+      }
+      state = state::unused;
+    }
+
+#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
+    [[nodiscard]] auto* pointer(this auto& self) noexcept {
+      using result_type =
+          std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, value_type const, value_type>;
+      return std::bit_cast<result_type*>(&self.storage[0]);
+    }
+    [[nodiscard]] auto& reference(this auto& self) noexcept { return *self.pointer(); }
+#else
+    [[nodiscard]] auto* pointer() noexcept { return std::bit_cast<value_type*>(&storage[0]); }
+    [[nodiscard]] auto const* pointer() const noexcept { return std::bit_cast<value_type const*>(&storage[0]); }
+    [[nodiscard]] auto& reference() noexcept { return *this->pointer(); }
+    [[nodiscard]] auto const& reference() const noexcept { return *this->pointer(); }
+#endif
+  };
+
+  // Helper to detect member<> specializations
+  template <typename T>
+  struct is_member : std::false_type {};
+  template <typename T, bool B>
+  struct is_member<member<T, B>> : std::true_type {};
+  template <typename T, bool B>
+  struct is_member<member<T, B> const> : std::true_type {};
+
+  using member_type = member<std::pair<Key const, Mapped>, std::is_trivial_v<Key> && std::is_trivial_v<Mapped>>;
 
 public:
   /// The key type
@@ -113,7 +239,7 @@ public:
   class sentinel {};
 
   template <typename T>
-    requires(std::is_same_v<T, member> || std::is_same_v<T, member const>)
+    requires is_member<T>::value
   class iterator_type {
     friend iterator_type<std::remove_const_t<T>>;
     friend iterator_type<T const>;
@@ -126,7 +252,7 @@ public:
     using reference = std::conditional_t<std::is_const_v<T>, value_type const&, value_type&>;
 
     using container_type =
-        std::conditional_t<std::is_const_v<T>, std::array<member, Size> const, std::array<member, Size>>;
+        std::conditional_t<std::is_const_v<T>, std::array<member_type, Size> const, std::array<member_type, Size>>;
 
     constexpr iterator_type() noexcept = default;
     constexpr iterator_type(T* const slot, container_type* const container) noexcept
@@ -222,8 +348,8 @@ public:
     container_type* container_ = nullptr;
   };
 
-  using iterator = iterator_type<member>;
-  using const_iterator = iterator_type<member const>;
+  using iterator = iterator_type<member_type>;
+  using const_iterator = iterator_type<member_type const>;
 
   constexpr iumap() : hash_{hasher{}}, equal_{key_equal{}} {}
   constexpr explicit iumap(hasher const& hash, key_equal const& equal = key_equal{}) : hash_{hash}, equal_{equal} {}
@@ -236,12 +362,12 @@ public:
       assert(this->find(v.first)->first == v.first);
     }
   }
-  iumap(iumap const& other) = default;
-  iumap(iumap&& other) noexcept = default;
-  ~iumap() noexcept = default;
+  constexpr iumap(iumap const& other) = default;
+  constexpr iumap(iumap&& other) noexcept = default;
+  constexpr ~iumap() noexcept = default;
 
-  iumap& operator=(iumap const& other) = default;
-  iumap& operator=(iumap&& other) noexcept = default;
+  constexpr iumap& operator=(iumap const& other) = default;
+  constexpr iumap& operator=(iumap&& other) noexcept = default;
 
   // Iterators
   [[nodiscard]] constexpr auto begin() noexcept { return iterator{v_.data(), &v_}; }
@@ -259,18 +385,18 @@ public:
   [[nodiscard]] static constexpr auto capacity() noexcept { return Size; }
 
   // Modifiers
-  void clear() noexcept;
+  constexpr void clear() noexcept;
   /// inserts elements
-  std::pair<iterator, bool> insert(value_type const& value);
+  constexpr std::pair<iterator, bool> insert(value_type const& value);
   /// inserts an element or assigns to the current element if the key already exists
   template <typename M>
-  std::pair<iterator, bool> insert_or_assign(Key const& key, M&& value);
+  constexpr std::pair<iterator, bool> insert_or_assign(Key const& key, M&& value);
   /// inserts in-place if the key does not exist, does nothing if the key exists
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(Key const& key, Args&&... args);
+  constexpr std::pair<iterator, bool> try_emplace(Key const& key, Args&&... args);
   /// erases elements
-  iterator erase(iterator pos);
-  size_type erase(Key const& key);
+  constexpr iterator erase(iterator pos);
+  constexpr size_type erase(Key const& key);
 
   // Lookup
   [[nodiscard]] constexpr iterator find(Key const& k);
@@ -300,134 +426,35 @@ public:
 #endif  // IUMAP_TRACE
 
 private:
-  enum class state : std::uint8_t { occupied, tombstone, unused };
-  struct member {
-    member() noexcept = default;
-    member(member const& other) noexcept(std::is_nothrow_copy_constructible_v<value_type>);
-    member(member&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>);
-    ~member() noexcept { this->destroy(); }
-    member& operator=(member const& other) noexcept(std::is_nothrow_copy_constructible_v<value_type>);
-    member& operator=(member&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>);
-
-    void destroy() noexcept;
-
-#if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
-    [[nodiscard]] constexpr auto* pointer(this auto& self) noexcept {
-      using result_type =
-          std::conditional_t<std::is_const_v<std::remove_reference_t<decltype(self)>>, value_type const, value_type>;
-      return std::bit_cast<result_type*>(&self.storage[0]);
-    }
-    [[nodiscard]] constexpr auto& reference(this auto& self) noexcept { return *self.pointer(); }
-#else
-    [[nodiscard]] constexpr value_type* pointer() noexcept { return std::bit_cast<value_type*>(&storage[0]); }
-    [[nodiscard]] constexpr value_type const* pointer() const noexcept {
-      return std::bit_cast<value_type const*>(&storage[0]);
-    }
-    [[nodiscard]] constexpr value_type& reference() noexcept { return *this->pointer(); }
-    [[nodiscard]] constexpr value_type const& reference() const noexcept { return *this->pointer(); }
-#endif
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    enum state state = state::unused;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,misc-non-private-member-variables-in-classes)
-    alignas(value_type) std::byte storage[sizeof(value_type)]{};
-  };
   [[no_unique_address]] hasher hash_;
   [[no_unique_address]] key_equal equal_;
   std::size_t size_ = 0;
   std::size_t tombstones_ = 0;
-  std::array<member, Size> v_{};
+  std::array<member_type, Size> v_{};
 
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
   constexpr auto* lookup_slot(this auto& self, Key const& key);
   constexpr auto* find_insert_slot(this auto& self, Key const& key);
 #else
-  constexpr member* lookup_slot(Key const& key) {
+  constexpr auto* lookup_slot(Key const& key) {
     auto const* const self = this;
-    return const_cast<member*>(self->lookup_slot(key));
+    return const_cast<member_type*>(self->lookup_slot(key));
   }
-  constexpr member const* lookup_slot(Key const& key) const;
+  constexpr member_type const* lookup_slot(Key const& key) const;
 
-  constexpr member* find_insert_slot(Key const& key) {
+  constexpr auto* find_insert_slot(Key const& key) {
     auto const* const self = this;
-    return const_cast<member*>(self->find_insert_slot(key));
+    return const_cast<member_type*>(self->find_insert_slot(key));
   }
-  constexpr member const* find_insert_slot(Key const& key) const;
+  constexpr member_type const* find_insert_slot(Key const& key) const;
 #endif  // __cpp_explicit_this_parameter
 };
-
-// ctor
-// ~~~~
-template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member const& other) noexcept(
-    std::is_nothrow_copy_constructible_v<value_type>)
-    : state{other.state} {
-  if (state == state::occupied) {
-    std::construct_at(this->pointer(), *other.pointer());
-  }
-}
-template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-iumap<Key, Mapped, Size, Hash, KeyEqual>::member::member(member&& other) noexcept(
-    std::is_nothrow_move_constructible_v<value_type>)
-    : state{other.state} {
-  if (state == state::occupied) {
-    std::construct_at(this->pointer(), std::move(*other.pointer()));
-  }
-}
-
-// operator=
-// ~~~~~~~~~
-template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member const& other) noexcept(
-    std::is_nothrow_copy_constructible_v<value_type>) -> member& {
-  if (this == &other) {
-    return *this;
-  }
-  if (this->state == state::occupied) {
-    this->destroy();
-  }
-  if (other.state == state::occupied) {
-    std::construct_at(this->pointer(), other.reference());
-  }
-  state = other.state;
-  return *this;
-}
-
-template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::member::operator=(member&& other) noexcept(
-    std::is_nothrow_move_constructible_v<value_type>) -> member& {
-  if (this == &other) {
-    return *this;
-  }
-  if (this->state == state::occupied) {
-    this->destroy();
-  }
-  if (other.state == state::occupied) {
-    std::construct_at(this->pointer(), std::move(other.reference()));
-  }
-  state = other.state;
-  return *this;
-}
-
-// destroy
-// ~~~~~~~
-template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
-  requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-void iumap<Key, Mapped, Size, Hash, KeyEqual>::member::destroy() noexcept {
-  if (state == state::occupied) {
-    std::destroy_at(this->pointer());
-  }
-  state = state::unused;
-}
 
 // clear
 // ~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-void iumap<Key, Mapped, Size, Hash, KeyEqual>::clear() noexcept {
+constexpr void iumap<Key, Mapped, Size, Hash, KeyEqual>::clear() noexcept {
   for (auto& entry : v_) {
     entry.destroy();
   }
@@ -440,7 +467,7 @@ void iumap<Key, Mapped, Size, Hash, KeyEqual>::clear() noexcept {
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 template <typename... Args>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&&... args)
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&&... args)
     -> std::pair<iterator, bool> {
   auto* const slot = this->find_insert_slot(key);
   if (slot == nullptr) {
@@ -449,13 +476,13 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&
   }
   auto const do_insert = slot->state != state::occupied;
   if (do_insert) {
-    // Not found. Add a new key/value pair.
-    new (slot->pointer()) value_type(key, std::forward<Args>(args)...);
-    ++size_;
     if (slot->state == state::tombstone) {
       --tombstones_;
     }
-    slot->state = state::occupied;
+    // Not found. Add a new key/value pair.
+    slot->construct(key, std::forward<Args>(args)...);
+    ++size_;
+    assert(slot->state == state::occupied);
   }
   return {iterator{slot, &v_}, do_insert};
 }
@@ -464,7 +491,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& key, Args&
 // ~~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert(value_type const& value) -> std::pair<iterator, bool> {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert(value_type const& value) -> std::pair<iterator, bool> {
   return try_emplace(value.first, value.second);
 }
 
@@ -473,7 +500,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert(value_type const& value) -
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 template <typename M>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, M&& value)
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, M&& value)
     -> std::pair<iterator, bool> {
   auto* const slot = this->find_insert_slot(key);
   if (slot == nullptr) {
@@ -482,12 +509,12 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key const& key, 
   }
   if (slot->state == state::unused || slot->state == state::tombstone) {
     // Not found. Add a new key/value pair.
-    new (slot->storage) value_type(key, std::forward<M>(value));
-    ++size_;
     if (slot->state == state::tombstone) {
       --tombstones_;
     }
-    slot->state = state::occupied;
+    slot->construct(key, std::forward<M>(value));
+    ++size_;
+    assert(slot->state == state::occupied);
     return std::make_pair(iterator{slot, &v_}, true);
   }
   slot->pointer()->second = std::forward<M>(value);  // Overwrite the existing value.
@@ -520,8 +547,8 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find(Key const& k) -> i
 // ~~~~~
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
-  member* const slot = pos.raw();
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
+  auto* const slot = pos.raw();
   auto const result = pos + 1;
   if (slot->state == state::occupied) {
     assert(size_ > 0);
@@ -538,7 +565,7 @@ auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> iterator {
 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
-auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(Key const& key) -> size_type {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(Key const& key) -> size_type {
   if (auto pos = this->find(key); pos != this->end()) {
     this->erase(pos);
   }
@@ -552,7 +579,7 @@ template <typename Key, typename Mapped, std::size_t Size, typename Hash, typena
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(this auto& self, Key const& key) {
 #else
-constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Key const& key) const -> member const* {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::lookup_slot(Key const& key) const -> member_type const* {
   auto const& self = *this;
 #endif  // __cpp_explicit_this_parameter
   using slot_type = std::remove_pointer_t<decltype(v_.data())>;
@@ -587,7 +614,7 @@ template <typename Key, typename Mapped, std::size_t Size, typename Hash, typena
 #if defined(__cpp_explicit_this_parameter) && __cpp_explicit_this_parameter >= 202110L
 constexpr auto* iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(this auto& self, Key const& key) {
 #else
-constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Key const& key) const -> member const* {
+constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::find_insert_slot(Key const& key) const -> member_type const* {
   auto const& self = *this;
 #endif  // __cpp_explicit_this_parameter
   using slot_type = std::remove_pointer_t<decltype(v_.data())>;

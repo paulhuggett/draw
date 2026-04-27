@@ -72,9 +72,9 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
   constexpr tracer<false> trace;
 
   auto const height = static_cast<std::uint16_t>(f.height * 8U);
-  font::glyph const* const glyph = f.find_glyph(code_point);
+  auto const* const glyph = f.find_glyph(code_point);
 
-  auto const& bitmaps = std::get<std::span<std::byte const>>(*glyph);
+  auto const& bitmaps = glyph->bm;
   auto const width = f.width(*glyph);
   bitmap bm{bitmap_store, width, height};
   for (auto y = std::size_t{0U}; y < height; ++y) {

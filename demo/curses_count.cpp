@@ -120,8 +120,8 @@ int main(int argc, char* argv[]) {
   constexpr auto frame_height = coordinate{32};
   std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
+  std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(draw::sans32), std::byte{0U}};
+  draw::glyph_cache gc{draw::sans32, glyph_cache_store};
 
   auto count = 0;
   auto swidth = 0;
@@ -140,8 +140,8 @@ int main(int argc, char* argv[]) {
     auto const first = std::begin(str_buffer);
     auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
     std::u8string_view const str_view{first, last};
-    swidth = std::min(draw::string_width(sans32, str_view), coordinate{frame_width});
-    frame_buffer.draw_string(gc, sans32, str_view, point{static_cast<coordinate>(frame_width - swidth), -1});
+    swidth = std::min(draw::string_width(draw::sans32, str_view), coordinate{frame_width});
+    frame_buffer.draw_string(gc, draw::sans32, str_view, point{static_cast<coordinate>(frame_width - swidth), -1});
 
     ++count;
 

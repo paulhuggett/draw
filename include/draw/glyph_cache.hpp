@@ -32,6 +32,7 @@
 #define DRAW_GLYPH_CACHE_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <span>
 #include <vector>
@@ -43,27 +44,42 @@
 namespace draw {
 
 class glyph_cache {
-public:
-  explicit constexpr glyph_cache(std::span<std::byte> const& store) noexcept
-      : store_size_{get_store_size()}, store_{store} {
-    assert(store_.size_bytes() >= get_size());
+private:
+  template <std::ranges::input_range FontsRange>
+  [[nodiscard]] static constexpr std::size_t get_store_size(FontsRange&& fonts) noexcept {
+    return std::ranges::max(std::forward<FontsRange>(fonts) | std::views::transform(glyph_cache::get_font_store_size));
   }
+
+public:
+  template <std::ranges::input_range Range>
+    requires std::is_same_v<
+                 std::remove_cvref_t<std::unwrap_reference_t<std::ranges::range_value_t<std::remove_cvref_t<Range>>>>,
+                 font>
+  constexpr glyph_cache(Range&& fonts, std::span<std::byte> const& store) noexcept
+      : store_size_{get_store_size(std::forward<Range>(fonts))}, store_{store} {
+    assert(store_.size_bytes() >= store_size_);
+  }
+
+  constexpr glyph_cache(font const& f, std::span<std::byte> const& store) noexcept
+      : glyph_cache(std::ranges::views::single(std::cref(f)), store) {}
 
   /// Returns a bitmap containing the rendered glyph from the supplied font.
   [[nodiscard]] bitmap const& get(font const& f, char32_t code_point);
 
-  /// Returns the number of bytes that are required for the graph-cache storage.
-  [[nodiscard]] static constexpr std::size_t get_size() noexcept {
-    return decltype(cache_)::max_size() * get_store_size();
+  template <std::ranges::input_range FontsRange>
+    requires std::is_same_v<
+        std::remove_cvref_t<std::unwrap_reference_t<std::ranges::range_value_t<std::remove_cvref_t<FontsRange>>>>, font>
+  [[nodiscard]] static constexpr std::size_t get_size(FontsRange&& fonts) noexcept {
+    return decltype(cache_)::max_size() * glyph_cache::get_store_size(std::forward<FontsRange>(fonts));
+  }
+  [[nodiscard]] static constexpr std::size_t get_size(font const& f) noexcept {
+    auto const fonts = std::ranges::views::single(std::cref(f));
+    return get_size(fonts);
   }
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
   [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
-
-  [[nodiscard]] static constexpr std::size_t get_store_size() noexcept {
-    return std::ranges::max(all_fonts | std::views::transform(glyph_cache::get_font_store_size));
-  }
 
   /// Returns the number of bytes required for the largest glyph in the supplied font.
   [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {
@@ -72,6 +88,7 @@ private:
     return stride * pixel_height;
   }
 
+  /// The size of the largest glyph that can be held by the cache.
   std::size_t store_size_;
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::span<std::byte> store_;

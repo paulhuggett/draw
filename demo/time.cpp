@@ -53,16 +53,24 @@ int main() {
 
   constexpr auto frame_width = std::uint16_t{128U};
   constexpr auto frame_height = std::uint16_t{32U};
-  std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
+  static constexpr auto const& font = draw::sans32;
+
+  // Storage for the glyph cache. Allocate enough space for the largest glyph in the font.
+  static constexpr auto gc_store_size = draw::glyph_cache::get_size(font);
+  static std::array<std::byte, gc_store_size> glyph_cache_store;
+  // Now the glyph cache itself.
+  static draw::glyph_cache gc{font, glyph_cache_store};
+
+  // Storage for the output bitmap.
+  static std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
+  // ... and the bitmap itself.
   bitmap frame_buffer{frame_store, frame_width, frame_height};
-  std::vector glyph_cache_store{draw::glyph_cache::get_size(), std::byte{0U}};
-  draw::glyph_cache gc{glyph_cache_store};
 
   std::array<char8_t, 8U> time_str{u8'\0'};
   auto const first = time_str.begin();
   auto const last = std::format_to_n(first, time_str.size(), "{:%H:%M:%S}",
                                      std::chrono::round<std::chrono::seconds>(std::chrono::system_clock::now()))
                         .out;
-  frame_buffer.draw_string(gc, sans32, std::u8string_view{first, last}, point{.x = 0, .y = 0});
+  frame_buffer.draw_string(gc, font, std::u8string_view{first, last}, point{.x = 0, .y = 0});
   frame_buffer.dump();
 }

@@ -39,9 +39,7 @@
 #include <unordered_map>
 
 #include "draw/iumap.hpp"
-// Font includes
-#include "draw/sans16.hpp"
-#include "draw/sans32.hpp"
+#include "draw/types.hpp"
 
 namespace draw {
 
@@ -68,12 +66,62 @@ constexpr auto white_square = std::uint32_t{0x25A1U};
 
 struct kerning_pair {
   /// Code point of the preceding glyph
-  std::uint32_t preceding : 21 = 0U;
-  std::uint32_t pad : 3 = 0U;
-  std::uint32_t distance : 8 = 0U;
+  std::uint32_t preceding : 21;
+  std::uint32_t pad : 3;
+  std::uint32_t distance : 8;
 
   friend constexpr bool operator==(kerning_pair const&, kerning_pair const&) noexcept = default;
 };
+
+/// Trivial_span is roughly equivalent to std::span<> but is a trivial type so that it can be used
+/// as an argument to a constexpr iumap.
+template <typename T>
+struct trivial_span {
+  using element_type = T;
+  using value_type = std::remove_cv_t<T>;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using pointer = T* DRAW_NONNULL;
+  using const_pointer = T const* DRAW_NONNULL;
+  using reference = T&;
+  using const_reference = T const&;
+  using iterator = pointer;
+  using const_iterator = const_pointer;
+
+  T* DRAW_NONNULL data_;
+  std::size_t size_;
+
+  [[nodiscard]] constexpr pointer data() const noexcept { return data_; }
+  [[nodiscard]] constexpr std::size_t size() const noexcept { return size_; }
+  [[nodiscard]] constexpr bool empty() const noexcept { return size_ == 0U; }
+
+  [[nodiscard]] constexpr iterator begin() noexcept { return data_; }
+  [[nodiscard]] constexpr const_iterator begin() const noexcept { return data_; }
+  [[nodiscard]] constexpr const_iterator cbegin() const noexcept { return data_; }
+
+  [[nodiscard]] constexpr iterator end() noexcept { return data_ + size_; }
+  [[nodiscard]] constexpr const_iterator end() const noexcept { return data_ + size_; }
+  [[nodiscard]] constexpr const_iterator cend() const noexcept { return data_ + size_; }
+
+  [[nodiscard]] constexpr reference operator[](size_type idx) const { return *(data_ + idx); }
+
+  template <std::size_t Size>
+  [[nodiscard]] static constexpr trivial_span from_array(std::array<T const, Size> const& arr) noexcept {
+    return {.data_ = arr.data(), .size_ = Size};
+  }
+  template <std::size_t Size>
+  [[nodiscard]] static constexpr trivial_span from_array(std::array<std::remove_const_t<T>, Size> const& arr) noexcept {
+    return {.data_ = arr.data(), .size_ = Size};
+  }
+};
+static_assert(std::is_trivial_v<trivial_span<int>>,
+              "The trivial_span<> type must be trivial so that glyph_map can be constexpr");
+
+struct glyph {
+  trivial_span<kerning_pair const> kerns;
+  trivial_span<std::byte const> bm;
+};
+static_assert(std::is_trivial_v<glyph>, "The glyph type must be trivial so that glyph_map can be constexpr");
 
 // The glyphs in a font are always a multiple of 8 pixels tall as given by the font's 'height'
 // member. The glyph data consists of an array of bytes which are grouped according to the font height: a
@@ -88,18 +136,16 @@ struct font {
   std::uint8_t height : 4 = 0U;  ///< Height of a glyph (measured in bytes rather than pixels).
   std::uint8_t spacing : 4 = 0U;
 
-  using kerning_pairs = std::span<kerning_pair const>;
-  using bytes = std::span<std::byte const>;
-  using glyph = std::tuple<kerning_pairs, bytes>;
   using glyph_map = iumap<std::uint32_t, glyph, 256U, details::glyph_hasher>;
   glyph_map glyphs;
 
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
-    auto const& bitmap = std::get<bytes>(g);
+    auto const& bitmap = g.bm;
     return static_cast<std::uint16_t>(bitmap.size() / this->height);
   }
 
-  [[nodiscard]] constexpr glyph const* find_glyph(char32_t const code_point) const {
+  [[nodiscard]] constexpr glyph const* DRAW_NONNULL find_glyph(char32_t const code_point) const {
+    assert(!glyphs.empty());
     auto pos = glyphs.find(code_point);
     if (auto const end = glyphs.end(); pos == end) {
       pos = glyphs.find(white_square);
@@ -113,9 +159,7 @@ struct font {
   }
 };
 
-constexpr std::array<kerning_pair, 0> empty_kern;
-
-constexpr std::array all_fonts{std::cref(sans16), std::cref(sans32)};
+constexpr std::array<kerning_pair const, 0> empty_kern;
 
 }  // end namespace draw
 

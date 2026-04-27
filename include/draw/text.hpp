@@ -42,15 +42,14 @@ namespace draw {
 
 namespace details {
 
-constexpr coordinate glyph_spacing(font const& f, font::glyph const& g, std::optional<char32_t> prev_code_point) {
+constexpr coordinate glyph_spacing(font const& f, glyph const& g, std::optional<char32_t> prev_code_point) {
   if (!prev_code_point.has_value()) {
     return 0;
   }
   auto space = static_cast<draw::coordinate>(f.spacing);
-  auto const kerning_pairs = std::get<std::span<draw::kerning_pair const>>(g);
-  auto const kerning_pairs_end = std::end(kerning_pairs);
+  auto const kerning_pairs_end = std::end(g.kerns);
   if (auto const kern_pos =
-          std::find_if(std::begin(kerning_pairs), kerning_pairs_end,
+          std::find_if(std::begin(g.kerns), kerning_pairs_end,
                        [&prev_code_point](draw::kerning_pair const& kp) { return kp.preceding == prev_code_point; });
       kern_pos != kerning_pairs_end) {
     space -= static_cast<draw::coordinate>(kern_pos->distance);
@@ -61,7 +60,7 @@ constexpr coordinate glyph_spacing(font const& f, font::glyph const& g, std::opt
 template <typename DrawFn>
 constexpr draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t const code_point,
                                            std::optional<char32_t> const prev_code_point, DrawFn&& draw) {
-  draw::font::glyph const* const g = f.find_glyph(code_point);
+  glyph const* const g = f.find_glyph(code_point);
   x += glyph_spacing(f, *g, prev_code_point);
   std::invoke(std::forward<DrawFn>(draw), code_point, x);
   x += f.width(*g);

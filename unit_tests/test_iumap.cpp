@@ -63,9 +63,9 @@ TEST(IUMap, CtorInitializerList) {
   using map_type = draw::iumap<int, std::string, 8>;
   using value_type = map_type::value_type;
   map_type const h{
-      value_type{1, "one"},
-      value_type{2, "two"},
-      value_type{3, "three"},
+      {1, "one"},
+      {2, "two"},
+      {3, "three"},
   };
   ASSERT_EQ(h.size(), 3U);
 
@@ -159,6 +159,12 @@ TEST(IUMap, FindNotFound) {
   EXPECT_EQ(pos, h.end());
 }
 
+TEST(IUMapConstexpr, FindNotFound) {
+  static constexpr draw::iumap<int, int, 4> h{{42, 420}};
+  constexpr auto pos = h.find(43);
+  EXPECT_EQ(pos, h.end());
+}
+
 TEST(IUMap, CopyAssign) {
   draw::iumap<int, std::string, 4> a;
   a.insert(std::make_pair(1, "one"));
@@ -192,6 +198,12 @@ TEST(IUMap, CopyAssign) {
   EXPECT_EQ(*a.find(6), six);
   ASSERT_NE(a.find(7), a.end());
   EXPECT_EQ(*a.find(7), seven);
+}
+
+TEST(IUMapConstexpr, CopyCtor) {
+  constexpr draw::iumap<int, int, 4> a{{1, 10}, {2, 20}, {3, 30}};
+  constexpr draw::iumap<int, int, 4> b = a;
+  EXPECT_EQ(b.size(), 3);
 }
 
 TEST(IUMap, MoveAssign) {
@@ -393,8 +405,54 @@ void Thrash(std::vector<int> const& in, std::vector<int> const& del) {
 #if defined(DRAW_FUZZTEST) && DRAW_FUZZTEST
 FUZZ_TEST(IUMap, Thrash);
 #endif
-TEST(IUMap, ThreashNone) {
+TEST(IUMap, ThrashNone) {
   Thrash(std::vector<int>{}, std::vector<int>{});
+}
+TEST(IUMap, ThrashOne) {
+  Thrash(std::vector<int>{1}, std::vector<int>{1});
+  Thrash(std::vector<int>{1}, std::vector<int>{});
+  Thrash(std::vector<int>{}, std::vector<int>{1});
+}
+
+TEST(IUMapConstexpr, Empty) {
+  constexpr draw::iumap<int, int, 8> h{};
+  EXPECT_EQ(h.size(), 0U);
+  EXPECT_EQ(h.max_size(), 8U);
+  EXPECT_EQ(h.capacity(), 8U);
+  EXPECT_EQ(h.begin(), h.end());
+  EXPECT_EQ(h.cbegin(), h.cend());
+  EXPECT_TRUE(h.empty());
+}
+TEST(IUMapConstexpr, CtorInitializerList) {
+  constexpr draw::iumap<int, int, 8> h{{1, 10}, {2, 20}, {3, 30}};
+  using value_type = decltype(h)::value_type;
+  EXPECT_EQ(h.size(), 3U);
+  EXPECT_FALSE(h.empty());
+
+  ASSERT_NE(h.find(1), h.end());
+  EXPECT_EQ(*h.find(1), (value_type{1, 10}));
+
+  ASSERT_NE(h.find(2), h.end());
+  EXPECT_EQ(*h.find(2), (value_type{2, 20}));
+
+  ASSERT_NE(h.find(3), h.end());
+  EXPECT_EQ(*h.find(3), (value_type{3, 30}));
+}
+TEST(IUMapConstexpr, ForEach) {
+  constexpr draw::iumap<int, int, 8> h{{1, 10}, {2, 20}, {3, 30}};
+  using value_type = decltype(h)::value_type;
+  std::vector<value_type> contents;
+  for (auto kvp : h) {
+    contents.push_back(kvp);
+  }
+  EXPECT_THAT(contents, testing::UnorderedElementsAre(value_type{1, 10}, value_type{2, 20}, value_type{3, 30}));
+}
+TEST(IUMapConstexpr, FindFound) {
+  static constexpr draw::iumap<int, int, 4> h{{42, 420}};
+  constexpr auto pos = h.find(42);
+  ASSERT_NE(pos, h.end());
+  EXPECT_EQ(pos->first, 42);
+  EXPECT_EQ(pos->second, 420);
 }
 
 }  // end anonymous namespace
