@@ -47,7 +47,7 @@ def compare_json(obj1:typing.Any, obj2:typing.Any, path:str="") -> list[str]:
 
 def run_rects(exe:pathlib.Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [exe, '-j' '-f100', '-d0'],
+        [exe, '-j', '-f100', '-d0'],
         capture_output=True,
         shell=False,
         cwd=None,
