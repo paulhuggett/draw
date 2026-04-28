@@ -45,7 +45,7 @@
 
 namespace {
 
-[[maybe_unused]] constexpr char get_pixel_for_trace(std::byte const pixels, unsigned const bit) {
+[[maybe_unused, nodiscard]] constexpr char get_pixel_for_trace(std::byte const pixels, unsigned const bit) {
   return (pixels & (std::byte{1U} << bit)) != std::byte{0U} ? 'X' : ' ';
 }
 
