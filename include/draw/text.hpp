@@ -42,7 +42,8 @@ namespace draw {
 
 namespace details {
 
-constexpr coordinate glyph_spacing(font const& f, glyph const& g, std::optional<char32_t> prev_code_point) {
+[[nodiscard]] constexpr coordinate glyph_spacing(font const& f, glyph const& g,
+                                                 std::optional<char32_t> prev_code_point) {
   if (!prev_code_point.has_value()) {
     return 0;
   }
@@ -58,8 +59,9 @@ constexpr coordinate glyph_spacing(font const& f, glyph const& g, std::optional<
 }
 
 template <typename DrawFn>
-constexpr draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f, char32_t const code_point,
-                                           std::optional<char32_t> const prev_code_point, DrawFn&& draw) {
+[[nodiscard]] constexpr draw::coordinate scan_code_point(draw::coordinate x, draw::font const& f,
+                                                         char32_t const code_point,
+                                                         std::optional<char32_t> const prev_code_point, DrawFn&& draw) {
   glyph const* const g = f.find_glyph(code_point);
   x += glyph_spacing(f, *g, prev_code_point);
   std::invoke(std::forward<DrawFn>(draw), code_point, x);
