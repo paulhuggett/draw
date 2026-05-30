@@ -126,6 +126,10 @@ function (setup_target target)
       -Wno-unsafe-buffer-usage
       -Wno-switch-enum
     )
+    if (XCODE)
+      # Xcode warns about several missing include directories inside the build tree. Just silence the noise.
+      list(APPEND extra_flags -Wno-missing-include-dirs)
+    endif()
     foreach(flag IN LISTS extra_flags)
       flag_if_available(${flag} new_flag)
       list(APPEND clang_options ${new_flag})
