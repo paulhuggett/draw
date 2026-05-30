@@ -119,7 +119,7 @@ def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int] | 
         if height is None:
             height = height2
         elif height2 != height:
-            raise RuntimeError(f'Height of {parent / pathlib.Path(f['file'])} does not match previous height of {height}!')
+            raise RuntimeError(f'Height of {parent / pathlib.Path(f["file"])} does not match previous height of {height}!')
 
         # 'starts' is a list of two-tuples (x, code_point) where x is the x-coordinate of the
         # column and code_point is the Unicode code point for that column.
