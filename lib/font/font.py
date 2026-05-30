@@ -106,7 +106,7 @@ def scan_y(x:int, height:int, pixels:PixelData) -> List[int]:
     return column
 
 
-def build_font(inputs:InputList, parent:pathlib.Path) -> Tuple[FontDict, int] | None:
+def build_font(inputs:InputList, parent:pathlib.Path) -> Union[Tuple[FontDict, int], None]:
     if len(inputs) == 0:
         raise RuntimeError('No inputs specified!')
 
