@@ -130,14 +130,16 @@ static_assert(std::is_trivial_v<glyph>, "The glyph type must be trivial so that 
 // column of pixels in the font. The least significant bit in each byte holds the pixel value for
 // the smallest y position.
 struct font {
-  std::uint8_t id = 0U;
+  // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
+  std::uint8_t id = 0U;  ///< A unique ID for the font
   std::uint8_t baseline = 0U;
-  std::uint8_t widest = 0U;
+  std::uint8_t widest = 0U;      ///< The width in pixels of the widest glyph in the font.
   std::uint8_t height : 4 = 0U;  ///< Height of a glyph (measured in bytes rather than pixels).
-  std::uint8_t spacing : 4 = 0U;
+  std::uint8_t spacing : 4 = 0U;  ///< The default number of pixels between glyphs (before kerning adjustment).
 
   using glyph_map = iumap<std::uint32_t, glyph, 256U, details::glyph_hasher>;
   glyph_map glyphs;
+  // NOLINTEND(misc-non-private-member-variables-in-classes)
 
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
     auto const& bitmap = g.bm;

@@ -88,12 +88,11 @@ public:
     if (src_row == nullptr) {
       return;
     }
-    using namespace draw::literals;
     for (auto x = get<0>(src_x); x < get<1>(src_x); ++x) {
       if (x % 8U == 0U) {
         std::print("'");
       }
-      std::print("{:c}", (src_row[x / 8U] & (0x80_b >> (x % 8U))) != std::byte{0U} ? '1' : '0');
+      std::print("{:c}", (src_row[x / 8U] & (std::byte{0x80} >> (x % 8U))) != std::byte{0U} ? '1' : '0');
     }
     std::print("    ");
   }

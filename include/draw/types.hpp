@@ -64,15 +64,21 @@ struct point {
 };
 
 struct rect {
+  // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   coordinate top = 0;
   coordinate left = 0;
   coordinate bottom = 0;
   coordinate right = 0;
+  // NOLINTEND(misc-non-private-member-variables-in-classes)
 
   constexpr friend bool operator==(rect const&, rect const&) noexcept = default;
 
-  [[nodiscard]] constexpr coordinate width() const noexcept { return right > left ? right - left : 0; }
-  [[nodiscard]] constexpr coordinate height() const noexcept { return bottom > top ? bottom - top : 0; }
+  [[nodiscard]] constexpr coordinate width() const noexcept {
+    return right > left ? static_cast<coordinate>(right - left) : coordinate{0};
+  }
+  [[nodiscard]] constexpr coordinate height() const noexcept {
+    return bottom > top ? static_cast<coordinate>(bottom - top) : coordinate{0};
+  }
 
   [[nodiscard]] constexpr point top_left() const noexcept { return {.x = left, .y = top}; }
   [[nodiscard]] constexpr point bot_right() const noexcept { return {.x = right, .y = bottom}; }
