@@ -2,4 +2,5 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=paulhuggett_draw&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=paulhuggett_draw)
 [![CodeCov](https://github.com/paulhuggett/draw/actions/workflows/codecov.yaml/badge.svg)](https://app.codecov.io/gh/paulhuggett/draw)
 [![Microsoft C++ Code Analysis](https://github.com/paulhuggett/draw/actions/workflows/msvc.yaml/badge.svg)](https://github.com/paulhuggett/draw/actions/workflows/msvc.yaml)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/02ccb047c2aa480c8eba8cd52ae38adc)](https://app.codacy.com/gh/paulhuggett/draw/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![REUSE status](https://api.reuse.software/badge/GitHub.com/paulhuggett/draw)](https://api.reuse.software/info/GitHub.com/paulhuggett/draw)
