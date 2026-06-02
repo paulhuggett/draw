@@ -2,10 +2,9 @@ version = 1
 
 [[annotations]]
 path = [
-  ".github/workflows/*",
+  ".github/**/*",
   "README.md",
   "demo/expected.json",
-  "include/draw/icubaby.hpp",
   "lib/font/sans_font/**/*"
 ]
 SPDX-FileCopyrightText = "2025 Paul Bowen-Huggett"
