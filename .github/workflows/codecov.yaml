@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: "True"
+          persist-credentials: false
 
       - name: Install Dependencies
         run: |
@@ -32,27 +33,23 @@ jobs:
           sudo apt-get install -y cmake "g++-$GCC_VERSION" lcov ninja-build
 
       - name: Configure Build
-        run: |
-          cmake                                      \
-            -G Ninja                                 \
-            -S .                                     \
-            -B "$BUILD_DIR"                          \
-            -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"   \
-            -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION" \
-            -D CMAKE_BUILD_TYPE=Debug                \
-            -D DRAW_COVERAGE=Yes
+        run: cmake -G Ninja
+                   -S .
+                   -B "$BUILD_DIR"
+                   -D CMAKE_C_COMPILER="gcc-$GCC_VERSION"
+                   -D CMAKE_CXX_COMPILER="g++-$GCC_VERSION"
+                   -D CMAKE_BUILD_TYPE=Debug
+                   -D DRAW_COVERAGE=Yes
 
       - name: Build
         run: cmake --build "$BUILD_DIR"
 
       - name: Run the Test and Demo Binaries
-        run: |
-          ctest                      \
-            --test-dir "$BUILD_DIR"  \
-            --output-junit junit.xml \
-            --parallel $(nproc)      \
-            --output-on-failure      \
-            --verbose
+        run:  ctest --test-dir "$BUILD_DIR"
+                    --output-junit junit.xml
+                    --parallel "$(nproc)"
+                    --output-on-failure
+                    --verbose
 
       - name: Collect the Coverage
         run: |
@@ -65,7 +62,7 @@ jobs:
             --ignore-errors mismatch
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: coverage.info
 
