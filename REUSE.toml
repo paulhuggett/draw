@@ -3,6 +3,7 @@ version = 1
 [[annotations]]
 path = [
   ".github/**/*",
+  ".codacy.yaml",
   "README.md",
   "demo/expected.json",
   "lib/font/sans_font/**/*"
