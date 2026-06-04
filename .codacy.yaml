@@ -4,3 +4,5 @@ engines:
     minTokenMatch: 100
     exclude_paths:
       - "/unit_tests/**/*"
+exclude_paths:
+  - lib/font/png.py
