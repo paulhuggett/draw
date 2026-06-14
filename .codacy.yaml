@@ -3,6 +3,9 @@ engines:
   duplication:
     minTokenMatch: 100
     exclude_paths:
-      - "/unit_tests/**/*"
+      - "**/unit_tests/**/*"
 exclude_paths:
-  - lib/font/png.py
+  - **/lib/font/png.py
+  - ./build_*/**/*
+  - ./build_linux/**/*
+
