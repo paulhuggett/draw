@@ -43,6 +43,7 @@ target_sources(draw-unit-tests
     test_paint_rect.cpp
     test_plru_cache.cpp
     test_rect.cpp
+    test_text.cpp
 )
 target_link_libraries(draw-unit-tests PRIVATE gmock_main draw)
 setup_target(draw-unit-tests)

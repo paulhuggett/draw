@@ -26,7 +26,7 @@
 
 import argparse
 import json
-import pathlib
+from pathlib import Path
 import subprocess
 import sys
 import typing
@@ -69,7 +69,20 @@ def compare_json(obj1:typing.Any, obj2:typing.Any, path:str="") -> list[str]:
         diff.append(f"[{path}] Value mismatch: {repr(obj1)} vs {repr(obj2)}")
     return diff
 
-def run_rects(exe:pathlib.Path) -> subprocess.CompletedProcess:
+
+def is_inside_project_tree(inp:Path|str) -> bool:
+    inp = Path(inp).resolve()
+    ok = False
+    for root, _, files in Path(__file__).parents[1].walk(on_error=print):
+        r = Path(root).resolve()
+        ok = ok or any(r / f == inp for f in files)
+    return ok
+
+
+def run_rects(exe:Path) -> subprocess.CompletedProcess:
+    if not is_inside_project_tree(exe):
+        raise RuntimeError(f'path {exe} is not inside the project tree')
+
     return subprocess.run(
         [exe, '-j', '-f100', '-d0'],
         capture_output=True,
@@ -87,8 +100,8 @@ def main() -> int:
     exit_code = EXIT_SUCCESS
     parser = argparse.ArgumentParser(prog='curses_rect_compare',
                                      description='Compare output from draw-curses-rect to the expected')
-    parser.add_argument('exe', help='The draw-curses-rect binary', type=pathlib.Path)
-    parser.add_argument('reference', help='JSON golden reference', type=pathlib.Path)
+    parser.add_argument('exe', help='The draw-curses-rect binary', type=Path)
+    parser.add_argument('reference', help='JSON golden reference', type=Path)
     args = parser.parse_args()
 
     completed = subprocess.run([args.exe, '-j', '-f100', '-d0'],
