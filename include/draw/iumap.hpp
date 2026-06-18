@@ -404,7 +404,9 @@ public:
   constexpr size_type erase(Key const& key);
 
   // Lookup
+  /// finds an element with key equivalent to \p k
   [[nodiscard]] constexpr iterator find(Key const& k);
+  /// finds an element with key equivalent to \p k
   [[nodiscard]] constexpr const_iterator find(Key const& k) const;
 
   // Observers
@@ -482,6 +484,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::try_emplace(Key const& 
   auto const do_insert = slot->state != state::occupied;
   if (do_insert) {
     if (slot->state == state::tombstone) {
+      assert(tombstones_ > 0U);
       --tombstones_;
     }
     // Not found. Add a new key/value pair.
@@ -515,6 +518,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::insert_or_assign(Key co
   if (slot->state == state::unused || slot->state == state::tombstone) {
     // Not found. Add a new key/value pair.
     if (slot->state == state::tombstone) {
+      assert(tombstones_ > 0U);
       --tombstones_;
     }
     slot->construct(key, std::forward<M>(value));
@@ -571,7 +575,7 @@ constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(iterator pos) -> 
 template <typename Key, typename Mapped, std::size_t Size, typename Hash, typename KeyEqual>
   requires mappable<Key, Mapped, Size, Hash, KeyEqual>
 constexpr auto iumap<Key, Mapped, Size, Hash, KeyEqual>::erase(Key const& key) -> size_type {
-  if (auto pos = this->find(key); pos != this->end()) {
+  if (auto const pos = this->find(key); pos != this->end()) {
     this->erase(pos);
   }
   return this->size();

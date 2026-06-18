@@ -135,12 +135,60 @@ TEST(IUMap, InsertOrAssignIntoAFullMap) {
   EXPECT_EQ(pos, h.end());
 }
 
+TEST(IUMap, TryEmplace) {
+  draw::iumap<int, std::string, 8> h;
+  using value_type = decltype(h)::value_type;
+  {
+    auto [pos1, did_insert1] = h.try_emplace(1, "one"s);
+    ASSERT_TRUE(did_insert1);
+    EXPECT_FALSE(h.empty());
+    EXPECT_EQ(h.size(), 1U);
+    EXPECT_EQ(*pos1, (value_type{1, "one"s}));
+  }
+  {
+    auto [pos2, did_insert2] = h.try_emplace(2, "two"s);
+    ASSERT_TRUE(did_insert2);
+    EXPECT_FALSE(h.empty());
+    EXPECT_EQ(h.size(), 2U);
+    EXPECT_EQ(*pos2, (value_type{2, "two"s}));
+  }
+  {
+    auto [pos3, did_insert3] = h.try_emplace(3, "three"s);
+    ASSERT_TRUE(did_insert3);
+    EXPECT_FALSE(h.empty());
+    EXPECT_EQ(h.size(), 3U);
+    EXPECT_EQ(*pos3, (value_type{3, "three"s}));
+  }
+  {
+    auto [pos1b, did_insert1b] = h.try_emplace(1, "one second"s);
+    ASSERT_FALSE(did_insert1b);
+    EXPECT_FALSE(h.empty());
+    EXPECT_EQ(h.size(), 3U);
+    EXPECT_EQ(*pos1b, (value_type{1, "one"s}));
+  }
+}
+
 TEST(IUMap, Erase) {
   draw::iumap<int, std::string, 8> h;
   auto [pos1, did_insert1] = h.insert(std::make_pair(10, "ten"s));
   h.erase(pos1);
   EXPECT_EQ(h.size(), 0U);
   EXPECT_TRUE(h.empty());
+}
+
+TEST(IUMap, TryEmplaceAtTombstone) {
+  draw::iumap<int, std::string, 4> h{
+      {1, "one"s},
+      {2, "two"s},
+  };
+  EXPECT_EQ(h.size(), 2U);
+  h.erase(1);
+  {
+    auto const [pos1, did_insert1] = h.try_emplace(1, "ichi");
+    ASSERT_TRUE(did_insert1);
+    EXPECT_EQ(*pos1, std::make_pair(1, "ichi"s));
+    EXPECT_EQ(h.size(), 2U);
+  }
 }
 
 TEST(IUMap, FindFound) {
