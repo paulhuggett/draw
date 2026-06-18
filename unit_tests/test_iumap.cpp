@@ -181,14 +181,14 @@ TEST(IUMap, TryEmplaceAtTombstone) {
       {1, "one"s},
       {2, "two"s},
   };
+  using value_type = decltype(h)::value_type;
   EXPECT_EQ(h.size(), 2U);
   h.erase(1);
-  {
-    auto const [pos1, did_insert1] = h.try_emplace(1, "ichi");
-    ASSERT_TRUE(did_insert1);
-    EXPECT_EQ(*pos1, std::make_pair(1, "ichi"s));
-    EXPECT_EQ(h.size(), 2U);
-  }
+
+  auto const [pos1, did_insert1] = h.try_emplace(1, "ichi");
+  ASSERT_TRUE(did_insert1);
+  EXPECT_EQ(*pos1, (value_type{1, "ichi"s}));
+  EXPECT_EQ(h.size(), 2U);
 }
 
 TEST(IUMap, FindFound) {
