@@ -73,7 +73,8 @@ def compare_json(obj1:typing.Any, obj2:typing.Any, path:str="") -> list[str]:
 def is_inside_project_tree(inp:Path|str) -> bool:
     inp = Path(inp).resolve()
     ok = False
-    for root, _, files in Path(__file__).parents[1].walk(on_error=print):
+    project_tree = Path(__file__).parents[1]
+    for root, _, files in project_tree.walk(on_error=print):
         r = Path(root).resolve()
         ok = ok or any(r / f == inp for f in files)
     return ok
@@ -93,6 +94,15 @@ def run_rects(exe:Path) -> subprocess.CompletedProcess:
         encoding='utf-8'
     )
 
+def compare(rects_out:str, reference:Path) -> str|None:
+    if not is_inside_project_tree(reference):
+        raise RuntimeError(f'path {reference} is not inside the project tree')
+
+    with open(reference, 'r', encoding='utf-8') as r:
+        for d in compare_json(json.loads(rects_out), json.load(r)):
+            return d
+    return None
+
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 
@@ -104,17 +114,14 @@ def main() -> int:
     parser.add_argument('reference', help='JSON golden reference', type=Path)
     args = parser.parse_args()
 
-    completed = subprocess.run([args.exe, '-j', '-f100', '-d0'],
-                   capture_output=True,
-                   shell=False,
-                   cwd=None,
-                   timeout=10,
-                   check=True,
-                   encoding='utf-8')
-    with open(args.reference, 'r', encoding='utf-8') as reference:
-        for d in compare_json(json.loads(completed.stdout), json.load(reference)):
-            exit_code = EXIT_FAILURE
-            print(d)
+    completed = run_rects(args.exe)
+
+    compare_result = compare(completed.stdout, args.reference)
+    if compare_result is None:
+        exit_code = EXIT_SUCCESS
+    else:
+        exit_code = EXIT_FAILURE
+        print(compare_result)
     return exit_code
 
 if __name__ == '__main__':
