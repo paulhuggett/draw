@@ -120,6 +120,56 @@ struct pattern {
   std::array<std::byte, 8> data;
 };
 
+struct rgba {
+  constexpr bool operator==(rgba const& rhs) const noexcept = default;
+  std::uint8_t r = 0x00;
+  std::uint8_t g = 0x00;
+  std::uint8_t b = 0x00;
+  std::uint8_t a = 0xFF;
+};
+
+class rgba_premult {
+public:
+  constexpr rgba_premult() noexcept = default;
+  constexpr explicit rgba_premult(rgba const& other) noexcept
+      : r{premultiply(other.r, other.a)},
+        g{premultiply(other.g, other.a)},
+        b{premultiply(other.b, other.a)},
+        a{other.a} {}
+  constexpr rgba_premult(std::uint8_t const r_, std::uint8_t const g_, std::uint8_t const b_,
+                         std::uint8_t const a_ = 0xFF) noexcept
+      : r{r_}, g{g_}, b{b_}, a{a_} {}
+  constexpr bool operator==(rgba_premult const& rhs) const noexcept = default;
+
+  constexpr rgba_premult& composite(rgba_premult const& other) noexcept {
+    r = static_cast<std::uint8_t>(other.r + div255(r * (0xFF - other.a)));
+    g = static_cast<std::uint8_t>(other.g + div255(g * (0xFF - other.a)));
+    b = static_cast<std::uint8_t>(other.b + div255(b * (0xFF - other.a)));
+    a = static_cast<std::uint8_t>(other.a + div255(a * (0xFF - other.a)));
+    return *this;
+  }
+  [[nodiscard]] constexpr rgba to_straight() const noexcept {
+    return a == 0 ? rgba{.r = 0, .g = 0, .b = 0, .a = 0}
+                  : rgba{.r = undo_premultiply(r, a), .g = undo_premultiply(g, a), .b = undo_premultiply(b, a), .a = a};
+  }
+
+  std::uint8_t r = 0x00;
+  std::uint8_t g = 0x00;
+  std::uint8_t b = 0x00;
+  std::uint8_t a = 0xFF;
+
+private:
+  [[nodiscard]] static constexpr std::uint8_t premultiply(std::uint8_t const c, std::uint8_t const a) noexcept {
+    return static_cast<std::uint8_t>(div255(static_cast<unsigned>(c) * a));
+  }
+  [[nodiscard]] static constexpr std::uint8_t undo_premultiply(std::uint8_t const c, std::uint8_t const a) noexcept {
+    assert(a != 0);
+    return static_cast<std::uint8_t>(std::min((c * 0xFFU + a / 2U) / a, 0xFFU));
+  }
+  // x / 255 is approx (x + (x >> 8)) >> 8
+  [[nodiscard]] static constexpr unsigned div255(unsigned const x) noexcept { return (x + 0x80 + (x >> 8)) >> 8; }
+};
+
 }  // end namespace draw
 
 #endif  // DRAW_TYPES_HPP

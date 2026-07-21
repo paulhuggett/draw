@@ -40,9 +40,11 @@ target_sources(draw-unit-tests
     test_frame_rect.cpp
     test_iumap.cpp
     test_line.cpp
+    test_line32.cpp
     test_paint_rect.cpp
     test_plru_cache.cpp
     test_rect.cpp
+    test_rgba.cpp
     test_text.cpp
 )
 target_link_libraries(draw-unit-tests PRIVATE gmock_main draw)

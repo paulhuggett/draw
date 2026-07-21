@@ -36,3 +36,9 @@ std::tuple<std::vector<std::byte>, draw::bitmap> create_bitmap_and_store(std::ui
   std::vector store{draw::bitmap::required_store_size(width, height), std::byte{0U}};
   return std::tuple(std::move(store), draw::bitmap{std::span{store}, width, height});
 }
+
+std::tuple<std::vector<draw::rgba_premult>, draw::bitmap32> create_bitmap32_and_store(std::uint16_t width,
+                                                                                      std::uint16_t height) {
+  std::vector store{draw::bitmap32::required_store_size(width, height), draw::rgba_premult{}};
+  return std::tuple(std::move(store), draw::bitmap32{std::span{store}, width, height});
+}

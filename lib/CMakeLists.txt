@@ -34,6 +34,7 @@ add_subdirectory(font)
 add_library(draw STATIC )
 target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/bitmap.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/bitmap32.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/font.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
@@ -44,6 +45,7 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
 
   bitmap.cpp
+  bitmap32.cpp
   glyph_cache.cpp
 )
 target_include_directories(draw

@@ -170,6 +170,21 @@ TEST(Line, Vertical) {
   EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 2, .bottom = 5, .right = 2}));
 }
 
+TEST(Line, VerticalReversed) {
+  auto [store, bmp] = create_bitmap_and_store(16U, 8U);
+  bmp.line(draw::point{2, 5}, draw::point{2, 2});
+  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
+                                       0b00000000_b, 0b00000000_b,  // [1]
+                                       0b00100000_b, 0b00000000_b,  // [2]
+                                       0b00100000_b, 0b00000000_b,  // [3]
+                                       0b00100000_b, 0b00000000_b,  // [4]
+                                       0b00100000_b, 0b00000000_b,  // [5]
+                                       0b00000000_b, 0b00000000_b,  // [6]
+                                       0b00000000_b, 0b00000000_b   // [7]
+                                       ));
+  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 2, .left = 2, .bottom = 5, .right = 2}));
+}
+
 TEST(Line, LastVerticalColumn) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
   bmp.line(draw::point{15, 2}, draw::point{15, 6});
