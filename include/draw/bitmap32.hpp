@@ -81,7 +81,8 @@ public:
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
     return required_stride(width) * static_cast<std::size_t>(height);
   }
-  [[nodiscard]] constexpr auto store(this auto& self) noexcept { return self.store_; }
+  [[nodiscard]] constexpr std::span<rgba_premult const> store() const noexcept { return store_; }
+  [[nodiscard]] constexpr std::span<rgba_premult> store() noexcept { return store_; }
 
   enum class transfer_mode : std::uint8_t { mode_copy, mode_or };
   void copy(bitmap32 const& source, point dest_pos, transfer_mode mode);
