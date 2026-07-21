@@ -301,12 +301,35 @@ def samples(font: FontDict, height:int) -> None:
         print()
 
 
+def is_inside_project_tree(inp:Union[pathlib.Path, str]) -> bool:
+    inp = pathlib.Path(inp).resolve()
+    ok = False
+    project_tree = pathlib.Path(__file__).parents[2]
+    for root, dirs, _ in project_tree.walk(on_error=print):
+        r = pathlib.Path(root).resolve()
+        a = any(r / d == inp for d in dirs)
+        ok = ok or any(r / d == inp for d in dirs)
+    return ok
+
+
+class CheckPathAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not is_inside_project_tree(namespace.output_dir):
+            raise ValueError("output directory must be inside the project tree")
+        setattr(namespace, self.dest, values)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description='Font Generator')
     parser.add_argument('file', help='JSON metadata describing the input files', type=pathlib.Path)
-    parser.add_argument('-o', '--output-dir', help='Output directory', default=os.getcwd())
+    parser.add_argument('-o', '--output-dir', help='Output directory', type=pathlib.Path, action=CheckPathAction, default=os.getcwd())
     parser.add_argument('--samples', help='Output samples', action='store_true')
     args = parser.parse_args()
+
 
     with open(args.file, 'r', encoding='utf-8') as fp:
         definition = json.load(fp)

@@ -24,6 +24,7 @@
 #  SPDX-License-Identifier: MIT
 # ===----------------------------------------------------------------------===//
 
+from typing import Union
 import argparse
 import json
 from pathlib import Path
@@ -70,7 +71,7 @@ def compare_json(obj1:typing.Any, obj2:typing.Any, path:str="") -> list[str]:
     return diff
 
 
-def is_inside_project_tree(inp:Path|str) -> bool:
+def is_inside_project_tree(inp:Union[Path,str]) -> bool:
     inp = Path(inp).resolve()
     ok = False
     project_tree = Path(__file__).parents[1]
@@ -94,7 +95,7 @@ def run_rects(exe:Path) -> subprocess.CompletedProcess:
         encoding='utf-8'
     )
 
-def compare(rects_out:str, reference:Path) -> str|None:
+def compare(rects_out:str, reference:Path) -> Union[str,None]:
     if not is_inside_project_tree(reference):
         raise RuntimeError(f'path {reference} is not inside the project tree')
 
