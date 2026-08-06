@@ -31,16 +31,17 @@
 
 #include <vector>
 
-#include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
+#include "draw/mono_bitmap.hpp"
 #include "draw/sans16.hpp"
+#include "draw/text.hpp"
 #include "draw/types.hpp"
 
 namespace {
 
-using draw::bitmap;
 using draw::coordinate;
 using draw::font;
+using draw::mono_bitmap;
 using draw::point;
 
 std::vector<char32_t> sorted_code_points(font const& f) {
@@ -56,27 +57,27 @@ std::vector<char32_t> sorted_code_points(font const& f) {
 int main() {
   constexpr auto frame_width = std::uint16_t{128U};
   constexpr auto frame_height = std::uint16_t{32U};
-  std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
-  bitmap bm{frame_store, frame_width, frame_height};
+  std::array<std::byte, mono_bitmap::required_store_size(frame_width, frame_height)> frame_store{};
+  mono_bitmap bitmap{frame_store, frame_width, frame_height};
   static auto const& font = draw::sans16;
   std::vector glyph_cache_store{draw::glyph_cache::get_size(font), std::byte{0U}};
   draw::glyph_cache gc{font, glyph_cache_store};
 
   point pos;
   for (auto const code_point : sorted_code_points(font)) {
-    auto const width = static_cast<std::int16_t>(bitmap::char_width(font, code_point));
-    if (pos.x + width > bm.width()) {
+    auto const width = static_cast<std::int16_t>(char_width(font, code_point));
+    if (pos.x + width > bitmap.width()) {
       pos.x = 0;
       pos.y += font.height * 8;
-      if (pos.y >= bm.height()) {
+      if (pos.y >= bitmap.height()) {
         break;
       }
     }
 
-    bm.draw_char(gc, font, code_point, pos);
+    draw_char(bitmap, gc, font, code_point, pos, draw::transfer_mode::mode_or);
     pos.x += width + 1;
   }
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
-  bm.dump();
+  bitmap.dump();
 #endif
 }

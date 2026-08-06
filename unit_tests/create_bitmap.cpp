@@ -31,14 +31,14 @@
 
 #include "create_bitmap.hpp"
 
-std::tuple<std::vector<std::byte>, draw::bitmap> create_bitmap_and_store(std::uint16_t const width,
-                                                                         std::uint16_t const height) {
-  std::vector store{draw::bitmap::required_store_size(width, height), std::byte{0U}};
-  return std::tuple(std::move(store), draw::bitmap{std::span{store}, width, height});
+std::tuple<std::vector<std::byte>, draw::mono_bitmap> create_bitmap_and_store(std::uint16_t const width,
+                                                                              std::uint16_t const height) {
+  std::vector store{draw::mono_bitmap::required_store_size(width, height), std::byte{0U}};
+  return std::tuple(std::move(store), draw::mono_bitmap{std::span{store}, width, height});
 }
 
-std::tuple<std::vector<draw::rgba_premult>, draw::bitmap32> create_bitmap32_and_store(std::uint16_t width,
-                                                                                      std::uint16_t height) {
-  std::vector store{draw::bitmap32::required_store_size(width, height), draw::rgba_premult{}};
-  return std::tuple(std::move(store), draw::bitmap32{std::span{store}, width, height});
+std::tuple<std::vector<draw::rgba_premult>, draw::rgba_bitmap> create_bitmap32_and_store(std::uint16_t width,
+                                                                                         std::uint16_t height) {
+  std::vector store{draw::rgba_bitmap::required_store_size(width, height), draw::rgba_premult{}};
+  return std::tuple(std::move(store), draw::rgba_bitmap{std::span{store}, width, height});
 }

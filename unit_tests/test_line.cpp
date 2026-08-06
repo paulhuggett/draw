@@ -30,7 +30,7 @@
 //===----------------------------------------------------------------------===//
 
 // DUT
-#include "draw/bitmap.hpp"
+#include "draw/mono_bitmap.hpp"
 
 // Google test/mock
 #include <gmock/gmock.h>
@@ -45,9 +45,11 @@ using namespace draw::literals;
 
 namespace {
 
+auto const black = draw::mono_pen{draw::black};
+
 TEST(Line, ShortHorizontal) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.line(draw::point{2, 5}, draw::point{11, 5});
+  bmp.line(draw::point{2, 5}, draw::point{11, 5}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -62,7 +64,7 @@ TEST(Line, ShortHorizontal) {
 
 TEST(Line, VeryShortHorizontal) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.line(draw::point{2, 5}, draw::point{6, 5});
+  bmp.line(draw::point{2, 5}, draw::point{6, 5}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -77,7 +79,7 @@ TEST(Line, VeryShortHorizontal) {
 
 TEST(Line, VeryShortHorizontalInTheFinalByte) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{10, 3}, draw::point{14, 3});
+  bmp.line(draw::point{10, 3}, draw::point{14, 3}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -88,7 +90,7 @@ TEST(Line, VeryShortHorizontalInTheFinalByte) {
 
 TEST(Line, LongHorizontal) {
   auto [store, bmp] = create_bitmap_and_store(24U, 4U);
-  bmp.line(draw::point{2, 1}, draw::point{21, 1});
+  bmp.line(draw::point{2, 1}, draw::point{21, 1}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
                                        0b00111111_b, 0b11111111_b, 0b11111100_b,  // [1]
                                        0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
@@ -99,7 +101,7 @@ TEST(Line, LongHorizontal) {
 
 TEST(Line, LongHorizontalReverse) {
   auto [store, bmp] = create_bitmap_and_store(24U, 4U);
-  bmp.line(draw::point{21, 1}, draw::point{2, 1});
+  bmp.line(draw::point{21, 1}, draw::point{2, 1}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
                                        0b00111111_b, 0b11111111_b, 0b11111100_b,  // [1]
                                        0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
@@ -111,7 +113,7 @@ TEST(Line, LongHorizontalReverse) {
 TEST(Line, OverLongHorizontal) {
   // The line end is too far in the x direction. Check that it is correctly clipped.
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{2, 1}, draw::point{21, 1});
+  bmp.line(draw::point{2, 1}, draw::point{21, 1}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00111111_b, 0b11111111_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -124,7 +126,7 @@ TEST(Line, OverLongHorizontalLastRow) {
   // Similar to the OverLongHorizontal test in that the x-ordinate of the line end is too large. This checks that we do
   // not write beyond the end of the bitmap storage vector.
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{0, 3}, draw::point{21, 3});
+  bmp.line(draw::point{0, 3}, draw::point{21, 3}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -135,7 +137,7 @@ TEST(Line, OverLongHorizontalLastRow) {
 
 TEST(Line, HorizontalClippedXTooLarge) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{16, 3}, draw::point{25, 3});
+  bmp.line(draw::point{16, 3}, draw::point{25, 3}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -146,7 +148,7 @@ TEST(Line, HorizontalClippedXTooLarge) {
 
 TEST(Line, HorizontalClippedYTooLarge) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{2, 4}, draw::point{11, 4});
+  bmp.line(draw::point{2, 4}, draw::point{11, 4}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -157,7 +159,7 @@ TEST(Line, HorizontalClippedYTooLarge) {
 
 TEST(Line, Vertical) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.line(draw::point{2, 2}, draw::point{2, 5});
+  bmp.line(draw::point{2, 2}, draw::point{2, 5}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00100000_b, 0b00000000_b,  // [2]
@@ -172,7 +174,7 @@ TEST(Line, Vertical) {
 
 TEST(Line, VerticalReversed) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.line(draw::point{2, 5}, draw::point{2, 2});
+  bmp.line(draw::point{2, 5}, draw::point{2, 2}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00100000_b, 0b00000000_b,  // [2]
@@ -187,7 +189,7 @@ TEST(Line, VerticalReversed) {
 
 TEST(Line, LastVerticalColumn) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.line(draw::point{15, 2}, draw::point{15, 6});
+  bmp.line(draw::point{15, 2}, draw::point{15, 6}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000001_b,  // [2]
@@ -202,7 +204,7 @@ TEST(Line, LastVerticalColumn) {
 
 TEST(Line, VerticalClippedXTooLarge) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{16, 2}, draw::point{16, 6});
+  bmp.line(draw::point{16, 2}, draw::point{16, 6}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -213,7 +215,7 @@ TEST(Line, VerticalClippedXTooLarge) {
 
 TEST(Line, VerticalClippedYTooLarge) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{1, 4}, draw::point{1, 10});
+  bmp.line(draw::point{1, 4}, draw::point{1, 10}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b00000000_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b00000000_b,  // [2]
@@ -224,7 +226,7 @@ TEST(Line, VerticalClippedYTooLarge) {
 
 TEST(Line, Diagonal1) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{0, 0}, draw::point{15, 3});
+  bmp.line(draw::point{0, 0}, draw::point{15, 3}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b11100000_b, 0b00000000_b,  // [0]
                                        0b00011111_b, 0b00000000_b,  // [1]
                                        0b00000000_b, 0b11111000_b,  // [2]
@@ -235,7 +237,7 @@ TEST(Line, Diagonal1) {
 
 TEST(Line, Diagonal2) {
   auto [store, bmp] = create_bitmap_and_store(16U, 4U);
-  bmp.line(draw::point{0, 3}, draw::point{15, 0});
+  bmp.line(draw::point{0, 3}, draw::point{15, 0}, black);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000111_b,  // [0]
                                        0b00000000_b, 0b11111000_b,  // [1]
                                        0b00011111_b, 0b00000000_b,  // [2]

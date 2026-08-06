@@ -37,9 +37,9 @@
 #include <span>
 #include <vector>
 
-#include "bitmap.hpp"
-#include "font.hpp"
-#include "plru_cache.hpp"
+#include "draw/font.hpp"
+#include "draw/mono_bitmap.hpp"
+#include "draw/plru_cache.hpp"
 
 namespace draw {
 
@@ -64,7 +64,7 @@ public:
       : glyph_cache(std::ranges::views::single(std::cref(f)), store) {}
 
   /// Returns a bitmap containing the rendered glyph from the supplied font.
-  [[nodiscard]] bitmap const& get(font const& f, char32_t code_point);
+  [[nodiscard]] mono_bitmap const& get(font const& f, char32_t code_point);
 
   template <std::ranges::input_range FontsRange>
     requires std::is_same_v<
@@ -79,7 +79,7 @@ public:
 
 private:
   /// Renders an individual glyph into the supplied bitmap.
-  [[nodiscard]] static bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
+  [[nodiscard]] static mono_bitmap render(font const& f, char32_t code_point, std::span<std::byte> bitmap_store);
 
   /// Returns the number of bytes required for the largest glyph in the supplied font.
   [[nodiscard]] static constexpr std::size_t get_font_store_size(font const& f) noexcept {
@@ -92,7 +92,7 @@ private:
   std::size_t store_size_;
   /// A block of memory that is large enough to contain a full cache of the largest glyph in the font.
   std::span<std::byte> store_;
-  plru_cache<std::uint32_t, bitmap, 8U, 2U> cache_;
+  plru_cache<std::uint32_t, mono_bitmap, 8U, 2U> cache_;
 };
 
 }  // end namespace draw

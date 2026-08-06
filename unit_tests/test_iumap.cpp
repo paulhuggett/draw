@@ -38,10 +38,10 @@
 #include <utility>
 #include <vector>
 
-// Google Test/Mock
+// Google Test/Mock/Fuzz
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#if defined(DRAW_FUZZTEST) && DRAW_FUZZTEST
+#if defined(DRAW_FUZZ_TESTS) && DRAW_FUZZ_TESTS
 #include <fuzztest/fuzztest.h>
 #endif
 
@@ -450,7 +450,7 @@ void Thrash(std::vector<int> const& in, std::vector<int> const& del) {
   EXPECT_THAT(a, testing::UnorderedElementsAreArray(b));
 }
 
-#if defined(DRAW_FUZZTEST) && DRAW_FUZZTEST
+#if defined(DRAW_FUZZ_TESTS) && DRAW_FUZZ_TESTS
 FUZZ_TEST(IUMap, Thrash);
 #endif
 TEST(IUMap, ThrashNone) {

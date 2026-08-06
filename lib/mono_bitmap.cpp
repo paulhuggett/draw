@@ -28,7 +28,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
-#include "draw/bitmap.hpp"
+#include "draw/mono_bitmap.hpp"
 
 // Standard library
 #include <algorithm>
@@ -59,15 +59,15 @@ namespace {
 
 // TODO: Add a SIMD implementation? Check what the compiler already does.
 template <typename T>
-void memor(T* DRAW_NONNULL dest, T const* DRAW_NONNULL src, std::size_t len) {
+void memor(T* DRAW_NONNULL dest, T const* DRAW_NONNULL src, std::size_t len) noexcept {
   for (; len > 0U; --len) {
     *(dest++) |= *(src++);
   }
 }
 
 template <typename T>
-void transfer(T* const DRAW_NONNULL dest, T const mask, T const v, draw::bitmap::transfer_mode const mode) {
-  using enum draw::bitmap::transfer_mode;
+void transfer(T* const DRAW_NONNULL dest, T const mask, T const v, draw::transfer_mode const mode) noexcept {
+  using enum draw::transfer_mode;
   switch (mode) {
   case mode_or: *dest |= v; break;
   case mode_copy: *dest = (*dest & ~mask) | v; break;
@@ -77,12 +77,12 @@ void transfer(T* const DRAW_NONNULL dest, T const mask, T const v, draw::bitmap:
 
 void copy_row_aligned(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
                       unsigned const dest_x, std::byte* const DRAW_NONNULL dest_row,
-                      draw::bitmap::transfer_mode const mode) {
+                      draw::transfer_mode const mode) noexcept {
   using namespace draw::literals;
   assert(src_row != nullptr && "Source row must be supplied");
   assert(dest_row != nullptr && "Destination row must be supplied");
   assert(src_x_end >= src_x && "Source X range must be valid");
-  using enum draw::bitmap::transfer_mode;
+  using enum draw::transfer_mode;
   assert(src_x % 8U == dest_x % 8U);
 
   auto const* src = src_row + (src_x / 8U);
@@ -102,9 +102,8 @@ void copy_row_aligned(unsigned src_x, unsigned const src_x_end, std::byte const*
 }
 
 // There's less than a byte to copy.
-#if 1
 void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
-                   unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
+                   unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::transfer_mode const mode) noexcept {
   using namespace draw::literals;
   assert(src_row != nullptr && "Source row must be supplied");
   assert(dest_row != nullptr && "Destination row must be supplied");
@@ -122,47 +121,11 @@ void copy_row_tiny(unsigned src_x, unsigned const src_x_end, std::byte const* co
   }
 }
 
-#else
-void copy_row_tiny(unsigned const src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
-                   unsigned dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
-  assert(src_row != nullptr && "Source row must be supplied");
-  assert(dest_row != nullptr && "Destination row must be supplied");
-  assert(src_x % 8U != dest_x % 8U);
-
-  auto const len = src_x_end - src_x;
-  auto const len_mask = ~(static_cast<std::byte>((1U << len) - 1U));
-
-  auto const src_shift = src_x % 8U;
-  auto const src_mask = len_mask >> src_shift;
-  auto const* const src = src_row + (src_x / 8U);
-
-  auto const dest_shift = dest_x % 8U;
-  auto const dest_mask = len_mask >> dest_shift;
-  auto* dest = dest_row + (dest_x / 8U);
-
-  auto src_value = *src & src_mask;
-  if (dest_shift > src_shift) {
-    src_value >>= dest_shift - src_shift;
-  } else if (dest_shift < src_shift) {
-    src_value <<= src_shift - dest_shift;
-  }
-  transfer(dest, dest_mask, src_value, mode);
-
-  if (dest_shift + len > 8U) {
-    auto const overflow_bits = dest_shift + len - 8U;
-    auto const overflow_shift = 8U - overflow_bits;
-    auto const overflow_mask = static_cast<std::byte>(~((1U << overflow_shift) - 1U));
-    auto const overflow_value = static_cast<std::byte>(std::to_integer<unsigned>(src_value) << overflow_shift);
-    transfer(dest + 1U, overflow_mask, overflow_value, mode);
-  }
-}
-#endif
-
 void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
                          unsigned dest_x, std::byte* const DRAW_NONNULL dest_row,
-                         draw::bitmap::transfer_mode const mode) {
+                         draw::transfer_mode const mode) noexcept {
   using namespace draw::literals;
-  using enum draw::bitmap::transfer_mode;
+  using enum draw::transfer_mode;
   assert(src_row != nullptr && "Source row must be supplied");
   assert(dest_row != nullptr && "Destination row must be supplied");
   assert(src_x % 8U != dest_x % 8U);
@@ -219,7 +182,7 @@ void copy_row_misaligned(unsigned src_x, unsigned const src_x_end, std::byte con
 }
 
 void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte const* const DRAW_NONNULL src_row,
-              unsigned const dest_x, std::byte* const DRAW_NONNULL dest_row, draw::bitmap::transfer_mode const mode) {
+              unsigned const dest_x, std::byte* const DRAW_NONNULL dest_row, draw::transfer_mode const mode) noexcept {
   assert(src_row != nullptr && "Source row must be supplied");
   assert(dest_row != nullptr && "Destination row must be supplied");
   assert(src_x_init <= src_x_end);
@@ -237,7 +200,7 @@ void copy_row(unsigned const src_x_init, unsigned const src_x_end, std::byte con
 namespace draw {
 
 #if defined(DRAW_HOSTED) && DRAW_HOSTED
-void bitmap::dump(std::FILE* const stream) const {
+void basic_bitmap<bool>::dump(std::FILE* const stream) const {
 #if defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
   auto xb = 0U;  // The x ordinate (in bytes)
   for (auto const d : store_) {
@@ -269,7 +232,7 @@ void bitmap::dump(std::FILE* const stream) const {
 }
 #endif  // DRAW_HOSTED && __cpp_lib_print
 
-void bitmap::copy(bitmap const& source, point const dest_pos, transfer_mode const mode) {
+void basic_bitmap<bool>::copy(basic_bitmap<bool> const& source, point const dest_pos, transfer_mode const mode) {
   // An initial gross clipping check.
   if ((dest_pos.x >= static_cast<int>(width_)) || (dest_pos.x + static_cast<int>(source.width()) < 0) ||
       (dest_pos.y >= static_cast<int>(height_)) || (dest_pos.y + static_cast<int>(source.height()) < 0)) {
@@ -300,7 +263,8 @@ void bitmap::copy(bitmap const& source, point const dest_pos, transfer_mode cons
                     .right = static_cast<coordinate>(dest_x + src_x_end - src_x_init - 1U)});
 }
 
-void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned const y, std::byte const pattern) {
+void basic_bitmap<bool>::line_horizontal(unsigned x0, unsigned x1, unsigned const y, mono_pen const& pen) noexcept {
+  std::byte const pattern = pen.pat[y % 8U];
   using namespace draw::literals;
   if (x0 > x1) {
     std::swap(x0, x1);  // Ensure that we always go from lower to higher addresses.
@@ -349,7 +313,7 @@ void bitmap::line_horizontal(unsigned x0, unsigned x1, unsigned const y, std::by
   *it = (*it & ~mask_high) | (mask_high & pattern);
 }
 
-void bitmap::line_vertical(unsigned const x, unsigned y0, unsigned y1) {
+void basic_bitmap<bool>::line_vertical(unsigned const x, unsigned y0, unsigned y1, mono_pen const& pen) noexcept {
   using namespace draw::literals;
   if (x >= width_) {
     return;
@@ -367,7 +331,7 @@ void bitmap::line_vertical(unsigned const x, unsigned y0, unsigned y1) {
   auto const bits = 0x80_b >> (x % 8U);
   for (auto y = y0; y < y1; ++y) {
     assert(index < store_.size() && "index is not within the bitmap");
-    store_[index] |= bits;
+    store_[index] |= bits & pen.pat[y % 8];
     index += stride_;
   }
 
@@ -377,20 +341,20 @@ void bitmap::line_vertical(unsigned const x, unsigned y0, unsigned y1) {
                     .right = static_cast<coordinate>(x)});
 }
 
-void bitmap::line(point p0, point p1) {
+void basic_bitmap<bool>::line(point p0, point p1, mono_pen const& pen) noexcept {
   using namespace draw::literals;
   if (p0.y == p1.y) {
     if (p0.y >= 0 && p0.y < height_) {
       this->line_horizontal(static_cast<std::uint16_t>(std::max(p0.x, coordinate{0})),
                             static_cast<std::uint16_t>(std::max(p1.x, coordinate{0})), static_cast<std::uint16_t>(p0.y),
-                            0xFF_b);
+                            pen);
     }
     return;
   }
   if (p0.x == p1.x) {
     if (p0.x >= 0 && p0.x < width_) {
       this->line_vertical(static_cast<unsigned>(p0.x), static_cast<unsigned>(std::max(p0.y, coordinate{0})),
-                          static_cast<unsigned>(std::max(p1.y, coordinate{0})));
+                          static_cast<unsigned>(std::max(p1.y, coordinate{0})), pen);
     }
     return;
   }
@@ -402,7 +366,7 @@ void bitmap::line(point p0, point p1) {
   auto err = dx + dy;
 
   for (;;) {
-    this->set({.x = p0.x, .y = p0.y}, true);
+    this->set({.x = p0.x, .y = p0.y}, pen);
     auto const e2 = err * 2;
     if (e2 >= dy) {
       if (p0.x == p1.x) {
@@ -420,60 +384,6 @@ void bitmap::line(point p0, point p1) {
       p0.y += sy;
     }
   }
-}
-
-void bitmap::frame_rect(rect const& r) {
-  if (r.right < r.left || r.bottom < r.top) {
-    return;
-  }
-  // The top and bottom lines
-  this->line({.x = r.left, .y = r.top}, {.x = r.right, .y = r.top});
-  this->line({.x = r.left, .y = r.bottom}, {.x = r.right, .y = r.bottom});
-  // The left and right lines
-  this->line({.x = r.left, .y = r.top}, {.x = r.left, .y = r.bottom});
-  this->line({.x = r.right, .y = r.top}, {.x = r.right, .y = r.bottom});
-}
-
-using namespace draw::literals;
-pattern const black{.data = {0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b, 0xFF_b}};
-pattern const white{.data = {0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b, 0x00_b}};
-pattern const gray{.data = {0xAA_b, 0x55_b, 0xAA_b, 0x55_b, 0xAA_b, 0x55_b, 0xAA_b, 0x55_b}};
-pattern const light_gray{.data = {0x88_b, 0x42_b, 0x88_b, 0x42_b, 0x88_b, 0x42_b, 0x88_b, 0x42_b}};
-
-void bitmap::paint_rect(rect const& r, pattern const& pat) {
-  if (r.bottom < r.top || r.right < r.left || r.bottom < 0 || r.right < 0) {
-    return;
-  }
-  if (r.top >= 0 && static_cast<unsigned>(r.top) >= height_) {
-    return;
-  }
-  auto const x0 = static_cast<std::uint16_t>(std::max(r.left, coordinate{0}));
-  auto const x1 = static_cast<std::uint16_t>(std::max(r.right, coordinate{0}));
-  auto const y0 = static_cast<std::uint16_t>(std::max(r.top, coordinate{0}));
-  auto const y1 = std::min(static_cast<std::uint16_t>(r.bottom), static_cast<std::uint16_t>(height_ - 1U));
-  for (auto y = y0; y <= y1; ++y) {
-    this->line_horizontal(x0, x1, y, pat.data[y % 8U]);
-  }
-}
-
-std::uint16_t bitmap::char_width(font const& f, char32_t code_point) {
-  glyph const* const g = f.find_glyph(code_point);
-  assert(g != nullptr);
-  return f.width(*g);
-}
-
-void bitmap::draw_char(glyph_cache& gc, font const& f, char32_t const code_point, point pos) {
-  if (pos.x > this->width() || pos.y > this->height()) {
-    return;
-  }
-  this->copy(gc.get(f, code_point), pos, transfer_mode::mode_or);
-}
-
-point bitmap::draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos) {
-  coordinate const new_x = scan_string(f, s, [this, &gc, &f, &pos](char32_t code_point, coordinate x) {
-    this->draw_char(gc, f, code_point, {.x = static_cast<coordinate>(pos.x + x), .y = pos.y});
-  });
-  return {.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
 }
 
 }  // end namespace draw

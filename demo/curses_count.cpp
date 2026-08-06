@@ -41,8 +41,8 @@
 #include <panel.h>
 
 // Draw
-#include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
+#include "draw/mono_bitmap.hpp"
 #include "draw/sans16.hpp"
 #include "draw/sans32.hpp"
 #include "draw/text.hpp"
@@ -50,37 +50,38 @@
 
 using namespace std::string_view_literals;
 using namespace draw::literals;
-using draw::bitmap;
 using draw::coordinate;
 using draw::gray;
+using draw::mono_bitmap;
+using draw::mono_pen;
 using draw::point;
 using draw::rect;
 
 namespace {
 
-void themometer(bitmap& bmp, rect const& r, float pcnt) {
+void themometer(mono_bitmap& bmp, rect const& r, float pcnt) {
   assert(pcnt <= 1.0F);
 
   // Draw the thermometer border.
-  bmp.frame_rect(r);
+  bmp.frame_rect(r, mono_pen{});
 
   // A gray fill for the body of the thermometer.
   auto fill = r.inset(1, 1);
   fill.right = r.left + static_cast<coordinate>(std::round(r.width() * pcnt));
-  bmp.paint_rect(fill, draw::gray);
+  bmp.paint_rect(fill, mono_pen{.pat = draw::gray});
   // A solid line to denote the end of the filled region.
-  bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom});
+  bmp.line(point{.x = fill.right, .y = fill.top}, point{.x = fill.right, .y = fill.bottom}, mono_pen{});
 
   // Fill the remaining port with white.
   fill.left = fill.right + 1;
   fill.right = r.right - 1;
-  bmp.paint_rect(fill, draw::white);
+  bmp.paint_rect(fill, mono_pen{.pat = draw::white});
 }
 
 /// Draws the contents of a bitmap on a specific curses window.
 /// \param win  The curses window on which the bitmap should be drawn
 /// \param bmp  The bitmap to be drawn
-void show(WINDOW* const win, bitmap const& bmp) {
+void show(WINDOW* const win, mono_bitmap const& bmp) {
   auto xb = 0U;  // The x ordinate (in bytes)
   auto yb = 0U;
   for (auto const d : bmp.store()) {
@@ -118,8 +119,8 @@ int main(int argc, char* argv[]) {
 
   constexpr auto frame_width = coordinate{128};
   constexpr auto frame_height = coordinate{32};
-  std::array<std::byte, bitmap::required_store_size(frame_width, frame_height)> frame_store{};
-  bitmap frame_buffer{frame_store, frame_width, frame_height};
+  std::array<std::byte, mono_bitmap::required_store_size(frame_width, frame_height)> frame_store{};
+  mono_bitmap frame_buffer{frame_store, frame_width, frame_height};
   std::vector<std::byte> glyph_cache_store{draw::glyph_cache::get_size(draw::sans32), std::byte{0U}};
   draw::glyph_cache gc{draw::sans32, glyph_cache_store};
 
@@ -131,7 +132,7 @@ int main(int argc, char* argv[]) {
                                  .left = static_cast<coordinate>(frame_width - swidth),
                                  .bottom = frame_height - 1U,
                                  .right = frame_width - 1U},
-                            draw::white);
+                            mono_pen{.pat = draw::white});
 
     themometer(frame_buffer,
                rect{.top = frame_height - 6, .left = 0, .bottom = frame_height - 1, .right = frame_width - 1},
@@ -141,7 +142,8 @@ int main(int argc, char* argv[]) {
     auto const last = std::format_to_n(first, str_buffer.size(), "{}", count).out;
     std::u8string_view const str_view{first, last};
     swidth = std::min(draw::string_width(draw::sans32, str_view), coordinate{frame_width});
-    frame_buffer.draw_string(gc, draw::sans32, str_view, point{static_cast<coordinate>(frame_width - swidth), -1});
+    draw::draw_string(frame_buffer, gc, draw::sans32, str_view,
+                      point{static_cast<coordinate>(frame_width - swidth), -1}, draw::transfer_mode::mode_copy);
 
     ++count;
 

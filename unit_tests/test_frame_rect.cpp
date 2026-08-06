@@ -30,7 +30,7 @@
 //===----------------------------------------------------------------------===//
 
 // DUT
-#include "draw/bitmap.hpp"
+#include "draw/mono_bitmap.hpp"
 
 // Google test/mock
 #include <gmock/gmock.h>
@@ -44,9 +44,11 @@ using namespace draw::literals;
 
 namespace {
 
+auto const black_pen = draw::mono_pen{.pat = draw::black};
+
 TEST(Frame, AllInside) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 6, .right = 14});
+  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 6, .right = 14}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b01111111_b, 0b11111110_b,  // [1]
                                        0b01000000_b, 0b00000010_b,  // [2]
@@ -60,7 +62,7 @@ TEST(Frame, AllInside) {
 
 TEST(Frame, Max) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.frame_rect(draw::rect{.top = 0, .left = 0, .bottom = 7, .right = 15});
+  bmp.frame_rect(draw::rect{.top = 0, .left = 0, .bottom = 7, .right = 15}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b11111111_b, 0b11111111_b,  // [0]
                                        0b10000000_b, 0b00000001_b,  // [1]
                                        0b10000000_b, 0b00000001_b,  // [2]
@@ -74,7 +76,7 @@ TEST(Frame, Max) {
 
 TEST(Frame, TooTall) {
   auto [store, bmp] = create_bitmap_and_store(16U, 8U);
-  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 8, .right = 14});
+  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 8, .right = 14}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b01111111_b, 0b11111110_b,  // [1]
                                        0b01000000_b, 0b00000010_b,  // [2]
@@ -88,7 +90,7 @@ TEST(Frame, TooTall) {
 
 TEST(Frame, TooWide) {
   auto [store, bmp] = create_bitmap_and_store(16, 8);
-  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 6, .right = 16});
+  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 6, .right = 16}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
                                        0b01111111_b, 0b11111111_b,  // [1]
                                        0b01000000_b, 0b00000000_b,  // [2]
@@ -102,7 +104,7 @@ TEST(Frame, TooWide) {
 
 TEST(Frame, MinimumSize) {
   auto [store, bmp] = create_bitmap_and_store(8, 4);
-  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 1, .right = 1});
+  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 1, .right = 1}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b,  // [0]
                                        0b01000000_b,  // [1]
                                        0b00000000_b,  // [2]
@@ -112,7 +114,7 @@ TEST(Frame, MinimumSize) {
 
 TEST(Frame, Empty) {
   auto [store, bmp] = create_bitmap_and_store(8, 4);
-  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 0, .right = 0});
+  bmp.frame_rect(draw::rect{.top = 1, .left = 1, .bottom = 0, .right = 0}, black_pen);
   EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b,  // [0]
                                        0b00000000_b,  // [1]
                                        0b00000000_b,  // [2]

@@ -1,10 +1,10 @@
-//===- include/draw/bitmap32.hpp --------------------------*- mode: C++ -*-===//
-//*  _     _ _                        _________   *
-//* | |__ (_) |_ _ __ ___   __ _ _ __|___ /___ \  *
-//* | '_ \| | __| '_ ` _ \ / _` | '_ \ |_ \ __) | *
-//* | |_) | | |_| | | | | | (_| | |_) |__) / __/  *
-//* |_.__/|_|\__|_| |_| |_|\__,_| .__/____/_____| *
-//*                             |_|               *
+//===- include/draw/rgba_bitmap.hpp -----------------------*- mode: C++ -*-===//
+//*            _             _     _ _                          *
+//*  _ __ __ _| |__   __ _  | |__ (_) |_ _ __ ___   __ _ _ __   *
+//* | '__/ _` | '_ \ / _` | | '_ \| | __| '_ ` _ \ / _` | '_ \  *
+//* | | | (_| | |_) | (_| | | |_) | | |_| | | | | | (_| | |_) | *
+//* |_|  \__, |_.__/ \__,_| |_.__/|_|\__|_| |_| |_|\__,_| .__/  *
+//* |___/                                          |_|          *
 //===----------------------------------------------------------------------===//
 // SPDX-FileCopyrightText: Copyright © 2026 Paul Bowen-Huggett
 // SPDX-License-Identifier: MIT
@@ -28,8 +28,8 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
-#ifndef DRAW_BITMAP32_HPP
-#define DRAW_BITMAP32_HPP
+#ifndef DRAW_RGBA_BITMAP_HPP
+#define DRAW_RGBA_BITMAP_HPP
 
 #include <algorithm>
 #include <array>
@@ -41,6 +41,7 @@
 #include <ranges>
 #include <span>
 
+#include "draw/basic_bitmap.hpp"
 #include "draw/types.hpp"
 
 #ifndef DRAW_HOSTED
@@ -52,25 +53,46 @@ namespace draw {
 struct font;
 class glyph_cache;
 
-class bitmap32 {
+template <>
+struct basic_pen<rgba> {
+  pattern pat = black;
+  rgba foreground{0xFF, 0xFF, 0xFF, 0xFF};
+  rgba background{0x00, 0x00, 0x00, 0xFF};
+};
+
+using rgba_pen = basic_pen<rgba>;
+
+template <>
+struct basic_pen<rgba_premult> {
+  constexpr basic_pen() noexcept = delete;
+  constexpr basic_pen(basic_pen const&) noexcept = default;
+  explicit constexpr basic_pen(basic_pen<rgba> const& other) noexcept
+      : pat{other.pat}, foreground{other.foreground}, background{other.background} {}
+
+  pattern pat = black;
+  rgba_premult foreground{0xFF, 0xFF, 0xFF, 0xFF};
+  rgba_premult background{0x00, 0x00, 0x00, 0xFF};
+};
+
+using rgba_premult_pen = basic_pen<rgba_premult>;
+
+template <>
+class basic_bitmap<rgba> {
   friend class glyph_cache;
 
 public:
-  constexpr bitmap32() noexcept = default;
-  constexpr bitmap32(std::span<rgba_premult> const& store, std::uint16_t const width, std::uint16_t const height,
-                     std::uint16_t const stride) noexcept
-      : width_{width}, height_{height}, stride_{stride}, store_{store} {
+  constexpr basic_bitmap() noexcept = default;
+  constexpr basic_bitmap(std::span<rgba_premult> const& store, std::uint16_t const width,
+                         std::uint16_t const height) noexcept
+      : width_{width}, height_{height}, stride_{required_stride(width)}, store_{store} {
     assert(store.size() >= this->actual_store_size() && "store is too small");
     assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
   }
-  constexpr bitmap32(std::span<rgba_premult> const& store, std::uint16_t const width,
-                     std::uint16_t const height) noexcept
-      : bitmap32(store, width, height, required_stride(width)) {}
 
   [[nodiscard]] static constexpr std::uint16_t required_stride(std::uint16_t const width) noexcept {
     assert(width <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "width is too great");
-    return width;
+    return std::min(width, static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()));
   }
   /// Returns the store size required for a bitmap with the supplied dimensions.
   /// \param width  The desired width of the bitmap in pixels.
@@ -79,46 +101,28 @@ public:
   [[nodiscard]] static constexpr std::size_t required_store_size(std::uint16_t const width,
                                                                  std::uint16_t const height) noexcept {
     assert(height <= static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max()) && "height is too great");
-    return required_stride(width) * static_cast<std::size_t>(height);
+    return required_stride(width) * static_cast<std::size_t>(std::min(
+                                        height, static_cast<std::uint16_t>(std::numeric_limits<coordinate>::max())));
   }
   [[nodiscard]] constexpr std::span<rgba_premult const> store() const noexcept { return store_; }
   [[nodiscard]] constexpr std::span<rgba_premult> store() noexcept { return store_; }
 
   enum class transfer_mode : std::uint8_t { mode_copy, mode_or };
-  void copy(bitmap32 const& source, point dest_pos, transfer_mode mode);
-  void clear() { std::ranges::fill(this->store(), rgba_premult{}); }
+  void copy(basic_bitmap<bool> const& source, point dest_pos, rgba const& foreground, rgba const& background) noexcept;
+  void clear() noexcept { std::ranges::fill(this->store(), rgba_premult{}); }
   /// Sets or clears an individual pixel.
   /// \param p The pixel to be set
-  /// \param color The desired color of the pixel
-  constexpr void set(point const p, rgba const& color);
-  constexpr void set(point const p, rgba_premult const& color);
+  /// \param pen The pen with which the pixel is drawn
+  constexpr void set(point const p, rgba_pen const& pen) noexcept;
+  constexpr void set(point const p, rgba_premult_pen const& pen) noexcept;
   /// Draws a straight line from p0 to p1.
   /// \param p0  Coordinate of one end of the line
   /// \param p1  Coordinate of the other end of the line
-  void line(point p0, point p1, rgba const& color);
+  /// \param pen The pen with which the line is drawn
+  void line(point p0, point p1, rgba_pen const& pen) noexcept;
 
-  void frame_rect(rect const& r);
-  void paint_rect(rect const& r, pattern const& pat);
-
-  /// Renders an individual glyph.
-  ///
-  /// \param gc  The glyph cache
-  /// \param f  The font in which the character will be rendered
-  /// \param code_point  The code point specifying the glyph to be drawn
-  /// \param pos The position at which the glyph should be drawn
-  void draw_char(glyph_cache& gc, font const& f, char32_t code_point, point pos);
-  /// \param gc  The glyph cache
-  /// \param f  The font in which the character will be rendered
-  /// \param s  The UTF-8 encoded string to be drawn
-  /// \param pos  The position for the first of the run of glyphs
-  /// \returns  The origin position \p pos with the x coordinate increased by the width of all the rendered glyphs.
-  point draw_string(glyph_cache& gc, font const& f, std::u8string_view s, point pos);
-  /// Returns the character width of the specified character.
-  ///
-  /// \param f  A font instance
-  /// \param code_point  The code point specifying the glyph to be drawn
-  /// \returns The width of the specified glyph
-  [[nodiscard]] static std::uint16_t char_width(font const& f, char32_t code_point);
+  void frame_rect(rect const& r, rgba_pen const& pen) noexcept { generic_frame_rect(*this, r, pen); }
+  void paint_rect(rect const& r, rgba_pen const& pen) noexcept { generic_paint_rect(*this, r, pen); }
 
   [[nodiscard]] constexpr std::uint16_t width() const noexcept { return width_; }
   [[nodiscard]] constexpr std::uint16_t height() const noexcept { return height_; }
@@ -146,17 +150,18 @@ private:
   [[nodiscard]] constexpr std::size_t actual_store_size() const noexcept {
     return static_cast<std::size_t>(stride_) * height_;
   }
-  // void line_horizontal(unsigned x0, unsigned x1, unsigned y, std::byte pattern);
-  void line_horizontal(unsigned x0, unsigned x1, unsigned const y, rgba_premult const& color, std::byte const pattern);
-  void line_vertical(unsigned const x, unsigned y0, unsigned y1, rgba_premult const& color);
+  void line_horizontal(unsigned x0, unsigned x1, unsigned const y, rgba_premult_pen const& pen) noexcept;
+  void line_vertical(unsigned const x, unsigned y0, unsigned y1, rgba_premult_pen const& pen) noexcept;
 
   /// Adds the supplied rectangle to the "dirty" area.
   constexpr void mark_dirty(rect const& modified) noexcept {
+    assert(modified.top >= 0 && modified.bottom >= modified.top && modified.bottom < height_);
+    assert(modified.left >= 0 && modified.right >= modified.left && modified.right < width_);
     dirty_ = dirty_ ? dirty_->union_rect(modified) : modified;
   }
 };
 
-constexpr void bitmap32::set(point const p, rgba_premult const& color) {
+constexpr void basic_bitmap<rgba>::set(point const p, rgba_premult_pen const& pen) noexcept {
   if (p.x < 0 || p.y < 0) {
     return;
   }
@@ -165,15 +170,22 @@ constexpr void bitmap32::set(point const p, rgba_premult const& color) {
   if (x >= width_ || y >= height_) {
     return;
   }
+
+  auto const mask = std::byte{1} << (x % 8U);
+  auto const pattern = pen.pat[y % 8];
+  auto const& color = (pattern & mask) != std::byte{0} ? pen.foreground : pen.background;
+
   auto const index = y * stride_ + x;
   assert(index < this->actual_store_size());
-  store_[index].composite(color);
+  store_[index] = store_[index].composite(color);
   this->mark_dirty({.top = p.y, .left = p.x, .bottom = p.y, .right = p.x});
 }
-constexpr void bitmap32::set(point const p, rgba const& color) {
-  this->set(p, rgba_premult{color});
+constexpr void basic_bitmap<rgba>::set(point const p, rgba_pen const& pen) noexcept {
+  this->set(p, rgba_premult_pen{pen});
 }
+
+using rgba_bitmap = basic_bitmap<rgba>;
 
 }  // end namespace draw
 
-#endif  // DRAW_BITMAP32_HPP
+#endif  // DRAW_RGBA_BITMAP_HPP

@@ -29,12 +29,15 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 #===----------------------------------------------------------------------===//
+include(setup_target)
+
 add_subdirectory(font)
 
 add_library(draw STATIC )
 target_sources(draw PRIVATE
-  "${DRAW_PROJECT_ROOT}/include/draw/bitmap.hpp"
-  "${DRAW_PROJECT_ROOT}/include/draw/bitmap32.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/basic_bitmap.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/mono_bitmap.hpp"
+  "${DRAW_PROJECT_ROOT}/include/draw/rgba_bitmap.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/font.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/glyph_cache.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/iumap.hpp"
@@ -44,8 +47,9 @@ target_sources(draw PRIVATE
   "${DRAW_PROJECT_ROOT}/include/draw/types.hpp"
   "${DRAW_PROJECT_ROOT}/include/draw/uinteger.hpp"
 
-  bitmap.cpp
-  bitmap32.cpp
+  basic_bitmap.cpp
+  mono_bitmap.cpp
+  rgba_bitmap.cpp
   glyph_cache.cpp
 )
 target_include_directories(draw

@@ -58,8 +58,7 @@ TEST(Rgba, Red100WithGreen50) {
   constexpr rgba_premult rpm{r};
   constexpr rgba_premult g50pm{g50};
 
-  auto outp = rpm;
-  outp.composite(g50pm);
+  auto const outp = rpm.composite(g50pm);
   EXPECT_EQ(outp, (rgba_premult{0x80, 0x7F, 0x00, 0xFF}));
   EXPECT_EQ(outp.to_straight(), (rgba{.r = 0x80, .g = 0x7F, .b = 0x00, .a = 0xFF}));
 }
@@ -70,8 +69,7 @@ TEST(Rgba, Red50WithGreen50) {
   constexpr rgba_premult r50pm{r50};
   constexpr rgba_premult g50pm{g50};
 
-  auto outp = r50pm;
-  outp.composite(g50pm);
+  auto const outp = r50pm.composite(g50pm);
   EXPECT_EQ(outp, (rgba_premult{0x40, 0x7F, 0x00, 0xBF}));
   EXPECT_EQ(outp.to_straight(), (rgba{.r = 0x55, .g = 0xAA, .b = 0x00, .a = 0xBF}));
 }

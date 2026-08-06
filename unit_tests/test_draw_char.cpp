@@ -31,10 +31,11 @@
 
 // DUT
 #include "draw/all_fonts.hpp"
-#include "draw/bitmap.hpp"
 #include "draw/font.hpp"
 #include "draw/glyph_cache.hpp"
+#include "draw/mono_bitmap.hpp"
 #include "draw/sans16.hpp"
+#include "draw/text.hpp"
 #include "draw/types.hpp"
 
 // Standard library
@@ -71,107 +72,140 @@ TEST(DrawChar, Basic) {
           {character, draw::glyph{decltype(draw::glyph::kerns)::from_array(draw::empty_kern),
                                   decltype(draw::glyph::bm)::from_array(bitmap_0020)}},
       }};
-  auto [store, bmp] = create_bitmap_and_store(8U, 16U);
+  auto [store, bitmap] = create_bitmap_and_store(8U, 16U);
   std::vector glyph_cache_store{draw::glyph_cache::get_size(minimal), std::byte{0U}};
   draw::glyph_cache gc{std::ranges::subrange{&minimal, &minimal + 1}, glyph_cache_store};
-  bmp.draw_char(gc, minimal, character, draw::point{.x = 0, .y = 0});
-  EXPECT_THAT(bmp.store(), ElementsAre(0b10000000_b,  // [0]
-                                       0b01000000_b,  // [1]
-                                       0b10000000_b,  // [2]
-                                       0b01000000_b,  // [3]
-                                       0b10000000_b,  // [4]
-                                       0b01000000_b,  // [5]
-                                       0b10000000_b,  // [6]
-                                       0b01000000_b,  // [7]
-                                       0b01000000_b,  // [8]
-                                       0b10000000_b,  // [9]
-                                       0b01000000_b,  // [10]
-                                       0b10000000_b,  // [11]
-                                       0b01000000_b,  // [12]
-                                       0b10000000_b,  // [13]
-                                       0b01000000_b,  // [14]
-                                       0b10000000_b   // [15]
-                                       ));
-  EXPECT_EQ(bmp.dirty(), gc.get(minimal, character).bounds());
-  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 1}));
+  draw::draw_char(bitmap, gc, minimal, character, draw::point{.x = 0, .y = 0}, draw::transfer_mode::mode_or);
+  EXPECT_THAT(bitmap.store(), ElementsAre(0b10000000_b,  // [0]
+                                          0b01000000_b,  // [1]
+                                          0b10000000_b,  // [2]
+                                          0b01000000_b,  // [3]
+                                          0b10000000_b,  // [4]
+                                          0b01000000_b,  // [5]
+                                          0b10000000_b,  // [6]
+                                          0b01000000_b,  // [7]
+                                          0b01000000_b,  // [8]
+                                          0b10000000_b,  // [9]
+                                          0b01000000_b,  // [10]
+                                          0b10000000_b,  // [11]
+                                          0b01000000_b,  // [12]
+                                          0b10000000_b,  // [13]
+                                          0b01000000_b,  // [14]
+                                          0b10000000_b   // [15]
+                                          ));
+  EXPECT_EQ(bitmap.dirty(), gc.get(minimal, character).bounds());
+  EXPECT_EQ(bitmap.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 1}));
 }
-
 TEST(DrawChar, A) {
   using namespace draw::literals;
 
-  auto [store, bmp] = create_bitmap_and_store(16U, 16U);
+  auto [store, bitmap] = create_bitmap_and_store(16U, 16U);
   std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
   draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
   constexpr auto const& font = draw::sans16;
   constexpr auto character = U'A';
-  bmp.draw_char(gc, font, character, draw::point{.x = 0, .y = 0});
-  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
-                                       0b00000000_b, 0b00000000_b,  // [1]
-                                       0b00000000_b, 0b00000000_b,  // [2]
-                                       0b00000100_b, 0b00000000_b,  // [3]
-                                       0b00000100_b, 0b00000000_b,  // [4]
-                                       0b00001010_b, 0b00000000_b,  // [5]
-                                       0b00001010_b, 0b00000000_b,  // [6]
-                                       0b00010001_b, 0b00000000_b,  // [7]
-                                       0b00010001_b, 0b00000000_b,  // [8]
-                                       0b00111111_b, 0b10000000_b,  // [9]
-                                       0b01000000_b, 0b01000000_b,  // [10]
-                                       0b01000000_b, 0b01000000_b,  // [11]
-                                       0b10000000_b, 0b00100000_b,  // [12]
-                                       0b00000000_b, 0b00000000_b,  // [13]
-                                       0b00000000_b, 0b00000000_b,  // [14]
-                                       0b00000000_b, 0b00000000_b   // [15]
-                                       ));
-  EXPECT_EQ(bmp.dirty(), gc.get(font, character).bounds());
-  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
+  draw::draw_char(bitmap, gc, font, character, draw::point{.x = 0, .y = 0}, draw::transfer_mode::mode_or);
+  EXPECT_THAT(bitmap.store(), ElementsAre(0b00000000_b, 0b00000000_b,  // [0]
+                                          0b00000000_b, 0b00000000_b,  // [1]
+                                          0b00000000_b, 0b00000000_b,  // [2]
+                                          0b00000100_b, 0b00000000_b,  // [3]
+                                          0b00000100_b, 0b00000000_b,  // [4]
+                                          0b00001010_b, 0b00000000_b,  // [5]
+                                          0b00001010_b, 0b00000000_b,  // [6]
+                                          0b00010001_b, 0b00000000_b,  // [7]
+                                          0b00010001_b, 0b00000000_b,  // [8]
+                                          0b00111111_b, 0b10000000_b,  // [9]
+                                          0b01000000_b, 0b01000000_b,  // [10]
+                                          0b01000000_b, 0b01000000_b,  // [11]
+                                          0b10000000_b, 0b00100000_b,  // [12]
+                                          0b00000000_b, 0b00000000_b,  // [13]
+                                          0b00000000_b, 0b00000000_b,  // [14]
+                                          0b00000000_b, 0b00000000_b   // [15]
+                                          ));
+  EXPECT_EQ(bitmap.dirty(), gc.get(font, character).bounds());
+  EXPECT_EQ(bitmap.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
 }
 TEST(DrawChar, Sans32A_Sans16A) {
   using namespace draw::literals;
 
-  auto [store, bmp] = create_bitmap_and_store(32U, 32U);
+  auto [store, bitmap] = create_bitmap_and_store(32U, 32U);
   std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
   draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
   constexpr auto character = U'A';
-  bmp.draw_char(gc, draw::sans16, character, draw::point{.x = 0, .y = 0});
-  EXPECT_EQ(bmp.dirty(), gc.get(draw::sans16, character).bounds());
-  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
-  bmp.draw_char(
-      gc, draw::sans32, character,
-      draw::point{.x = static_cast<draw::coordinate>(draw::bitmap::char_width(draw::sans16, character)), .y = 0});
-  EXPECT_THAT(bmp.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [1]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
-                                       0b00000100_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [3]
-                                       0b00000100_b, 0b00000000_b, 0b00001110_b, 0b00000000_b,  // [4]
-                                       0b00001010_b, 0b00000000_b, 0b00001110_b, 0b00000000_b,  // [5]
-                                       0b00001010_b, 0b00000000_b, 0b00011111_b, 0b00000000_b,  // [6]
-                                       0b00010001_b, 0b00000000_b, 0b00011111_b, 0b00000000_b,  // [7]
-                                       0b00010001_b, 0b00000000_b, 0b00111111_b, 0b10000000_b,  // [8]
-                                       0b00111111_b, 0b10000000_b, 0b00111011_b, 0b10000000_b,  // [9]
-                                       0b01000000_b, 0b01000000_b, 0b00111011_b, 0b10000000_b,  // [10]
-                                       0b01000000_b, 0b01000000_b, 0b01110001_b, 0b11000000_b,  // [11]
-                                       0b10000000_b, 0b00100000_b, 0b01110001_b, 0b11000000_b,  // [12]
-                                       0b00000000_b, 0b00000000_b, 0b11110001_b, 0b11100000_b,  // [13]
-                                       0b00000000_b, 0b00000000_b, 0b11100000_b, 0b11100000_b,  // [14]
-                                       0b00000000_b, 0b00000001_b, 0b11100000_b, 0b11110000_b,  // [15]
-                                       0b00000000_b, 0b00000001_b, 0b11000000_b, 0b01110000_b,  // [16]
-                                       0b00000000_b, 0b00000001_b, 0b11111111_b, 0b11110000_b,  // [17]
-                                       0b00000000_b, 0b00000011_b, 0b11111111_b, 0b11111000_b,  // [18]
-                                       0b00000000_b, 0b00000011_b, 0b11111111_b, 0b11111000_b,  // [19]
-                                       0b00000000_b, 0b00000111_b, 0b10000000_b, 0b00111100_b,  // [20]
-                                       0b00000000_b, 0b00000111_b, 0b00000000_b, 0b00011100_b,  // [21]
-                                       0b00000000_b, 0b00001111_b, 0b00000000_b, 0b00011110_b,  // [22]
-                                       0b00000000_b, 0b00001110_b, 0b00000000_b, 0b00001110_b,  // [23]
-                                       0b00000000_b, 0b00001110_b, 0b00000000_b, 0b00001110_b,  // [24]
-                                       0b00000000_b, 0b00011100_b, 0b00000000_b, 0b00000111_b,  // [25]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [26]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [27]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [28]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [29]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [30]
-                                       0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b   // [31]
-                                       ));
-  EXPECT_EQ(bmp.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 31, .right = 31}));
+  draw::draw_char(bitmap, gc, draw::sans16, character, draw::point{.x = 0, .y = 0}, draw::transfer_mode::mode_or);
+  EXPECT_EQ(bitmap.dirty(), gc.get(draw::sans16, character).bounds());
+  EXPECT_EQ(bitmap.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
+  draw::draw_char(bitmap, gc, draw::sans32, character,
+                  draw::point{.x = static_cast<draw::coordinate>(draw::char_width(draw::sans16, character)), .y = 0},
+                  draw::transfer_mode::mode_or);
+  EXPECT_THAT(bitmap.store(), ElementsAre(0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [0]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [1]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [2]
+                                          0b00000100_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [3]
+                                          0b00000100_b, 0b00000000_b, 0b00001110_b, 0b00000000_b,  // [4]
+                                          0b00001010_b, 0b00000000_b, 0b00001110_b, 0b00000000_b,  // [5]
+                                          0b00001010_b, 0b00000000_b, 0b00011111_b, 0b00000000_b,  // [6]
+                                          0b00010001_b, 0b00000000_b, 0b00011111_b, 0b00000000_b,  // [7]
+                                          0b00010001_b, 0b00000000_b, 0b00111111_b, 0b10000000_b,  // [8]
+                                          0b00111111_b, 0b10000000_b, 0b00111011_b, 0b10000000_b,  // [9]
+                                          0b01000000_b, 0b01000000_b, 0b00111011_b, 0b10000000_b,  // [10]
+                                          0b01000000_b, 0b01000000_b, 0b01110001_b, 0b11000000_b,  // [11]
+                                          0b10000000_b, 0b00100000_b, 0b01110001_b, 0b11000000_b,  // [12]
+                                          0b00000000_b, 0b00000000_b, 0b11110001_b, 0b11100000_b,  // [13]
+                                          0b00000000_b, 0b00000000_b, 0b11100000_b, 0b11100000_b,  // [14]
+                                          0b00000000_b, 0b00000001_b, 0b11100000_b, 0b11110000_b,  // [15]
+                                          0b00000000_b, 0b00000001_b, 0b11000000_b, 0b01110000_b,  // [16]
+                                          0b00000000_b, 0b00000001_b, 0b11111111_b, 0b11110000_b,  // [17]
+                                          0b00000000_b, 0b00000011_b, 0b11111111_b, 0b11111000_b,  // [18]
+                                          0b00000000_b, 0b00000011_b, 0b11111111_b, 0b11111000_b,  // [19]
+                                          0b00000000_b, 0b00000111_b, 0b10000000_b, 0b00111100_b,  // [20]
+                                          0b00000000_b, 0b00000111_b, 0b00000000_b, 0b00011100_b,  // [21]
+                                          0b00000000_b, 0b00001111_b, 0b00000000_b, 0b00011110_b,  // [22]
+                                          0b00000000_b, 0b00001110_b, 0b00000000_b, 0b00001110_b,  // [23]
+                                          0b00000000_b, 0b00001110_b, 0b00000000_b, 0b00001110_b,  // [24]
+                                          0b00000000_b, 0b00011100_b, 0b00000000_b, 0b00000111_b,  // [25]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [26]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [27]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [28]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [29]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b,  // [30]
+                                          0b00000000_b, 0b00000000_b, 0b00000000_b, 0b00000000_b   // [31]
+                                          ));
+  EXPECT_EQ(bitmap.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 31, .right = 31}));
+}
+TEST(DrawChar, RGBATarget) {
+  auto [store, bitmap] = create_bitmap32_and_store(16U, 16U);
+  std::vector glyph_cache_store{draw::glyph_cache::get_size(draw::all_fonts), std::byte{0U}};
+  draw::glyph_cache gc{draw::all_fonts, glyph_cache_store};
+
+  constexpr auto const& font = draw::sans16;
+  constexpr auto character = U'A';
+  constexpr auto red = draw::rgba{0xFF, 0x00, 0x00};
+  constexpr auto F = draw::rgba_premult{red};
+  constexpr auto b = draw::rgba_premult{draw::rgba{}};
+  draw::draw_char(bitmap, gc, font, character, draw::point{.x = 0, .y = 0}, red, draw::rgba{});
+
+  std::vector const expected{
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [ 0]
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [ 1]
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [ 2]
+      b, b, b, b, b, F, b, b, b, b, b, b, b, b, b, b,  // [ 3]
+      b, b, b, b, b, F, b, b, b, b, b, b, b, b, b, b,  // [ 4]
+      b, b, b, b, F, b, F, b, b, b, b, b, b, b, b, b,  // [ 5]
+      b, b, b, b, F, b, F, b, b, b, b, b, b, b, b, b,  // [ 6]
+      b, b, b, F, b, b, b, F, b, b, b, b, b, b, b, b,  // [ 7]
+      b, b, b, F, b, b, b, F, b, b, b, b, b, b, b, b,  // [ 8]
+      b, b, F, F, F, F, F, F, F, b, b, b, b, b, b, b,  // [ 9]
+      b, F, b, b, b, b, b, b, b, F, b, b, b, b, b, b,  // [10]
+      b, F, b, b, b, b, b, b, b, F, b, b, b, b, b, b,  // [11]
+      F, b, b, b, b, b, b, b, b, b, F, b, b, b, b, b,  // [12]
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [13]
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [14]
+      b, b, b, b, b, b, b, b, b, b, b, b, b, b, b, b,  // [15]
+  };
+  EXPECT_THAT(bitmap.store(), testing::ElementsAreArray(expected));
+  EXPECT_EQ(bitmap.dirty(), gc.get(font, character).bounds());
+  EXPECT_EQ(bitmap.dirty(), (draw::rect{.top = 0, .left = 0, .bottom = 15, .right = 10}));
 }
 
 }  // end anonymous namespace

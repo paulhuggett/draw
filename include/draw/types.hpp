@@ -116,9 +116,7 @@ struct rect {
   }
 };
 
-struct pattern {
-  std::array<std::byte, 8> data;
-};
+using pattern = std::array<std::byte, 8>;
 
 struct rgba {
   constexpr bool operator==(rgba const& rhs) const noexcept = default;
@@ -141,12 +139,11 @@ public:
       : r{r_}, g{g_}, b{b_}, a{a_} {}
   constexpr bool operator==(rgba_premult const& rhs) const noexcept = default;
 
-  constexpr rgba_premult& composite(rgba_premult const& other) noexcept {
-    r = static_cast<std::uint8_t>(other.r + div255(r * (0xFF - other.a)));
-    g = static_cast<std::uint8_t>(other.g + div255(g * (0xFF - other.a)));
-    b = static_cast<std::uint8_t>(other.b + div255(b * (0xFF - other.a)));
-    a = static_cast<std::uint8_t>(other.a + div255(a * (0xFF - other.a)));
-    return *this;
+  [[nodiscard]] constexpr rgba_premult composite(rgba_premult const& other) const noexcept {
+    return {static_cast<std::uint8_t>(other.r + div255(r * (0xFF - other.a))),
+            static_cast<std::uint8_t>(other.g + div255(g * (0xFF - other.a))),
+            static_cast<std::uint8_t>(other.b + div255(b * (0xFF - other.a))),
+            static_cast<std::uint8_t>(other.a + div255(a * (0xFF - other.a)))};
   }
   [[nodiscard]] constexpr rgba to_straight() const noexcept {
     return a == 0 ? rgba{.r = 0, .g = 0, .b = 0, .a = 0}

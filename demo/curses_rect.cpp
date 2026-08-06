@@ -49,16 +49,17 @@
 
 // Draw
 #include "draw/all_fonts.hpp"
-#include "draw/bitmap.hpp"
 #include "draw/glyph_cache.hpp"
+#include "draw/mono_bitmap.hpp"
 #include "draw/text.hpp"
 
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 using namespace draw::literals;
-using draw::bitmap;
 using draw::coordinate;
 using draw::gray;
+using draw::mono_bitmap;
+using draw::mono_pen;
 using draw::point;
 using draw::rect;
 
@@ -68,7 +69,7 @@ class bitmap_output {
 public:
   virtual ~bitmap_output() noexcept = default;
 
-  void show_frame(bitmap const& bmp, rect update) {
+  void show_frame(mono_bitmap const& bmp, rect update) {
     // Clamp the update rect to the bounds of the bitmap.
     update = {
         .top = std::max(update.top, coordinate{0}),
@@ -225,13 +226,15 @@ struct options {
 class drawable {
 public:
   virtual ~drawable() noexcept = default;
-  virtual void draw(bitmap& dest, point origin) = 0;
+  virtual void draw(mono_bitmap& dest, point origin) = 0;
   [[nodiscard]] virtual point size() const = 0;
 };
 
 class text_drawable final : public drawable {
 public:
-  void draw(bitmap& dest, point origin) override { dest.draw_string(gc_, font, str_, origin); }
+  void draw(mono_bitmap& dest, point origin) override {
+    draw_string(dest, gc_, font, str_, origin, draw::transfer_mode::mode_or);
+  }
   [[nodiscard]] point size() const override {
     return {.x = draw::string_width(font, str_), .y = static_cast<coordinate>(font.height * 8U)};
   }
@@ -246,9 +249,9 @@ private:
 class rect_drawable final : public drawable {
 public:
   constexpr explicit rect_drawable(point size) : size_{size} {}
-  void draw(bitmap& dest, point origin) override {
+  void draw(mono_bitmap& dest, point origin) override {
     rect const r{.top = 0, .left = 0, .bottom = size_.y, .right = size_.x};
-    dest.paint_rect(r.offset(origin), draw::black);
+    dest.paint_rect(r.offset(origin), mono_pen{.pat = draw::black});
   }
   [[nodiscard]] point size() const override { return size_; }
 
@@ -259,14 +262,15 @@ private:
 int main(int argc, char* argv[]) {
   constexpr auto frame = point{.x = 128, .y = 32};
   static constexpr auto& background = draw::white;
-  static std::array<std::byte, bitmap::required_store_size(frame.x, frame.y)> frame_store{};
+  static std::array<std::byte, mono_bitmap::required_store_size(frame.x, frame.y)> frame_store{};
 
   options opts{argc, argv};
 
   auto output = make_output(opts.json);
 
-  auto frame_buffer = bitmap{frame_store, frame.x, frame.y};
-  frame_buffer.paint_rect({.top = 0, .left = 0, .bottom = frame.y - 1, .right = frame.x - 1}, background);
+  auto frame_buffer = mono_bitmap{frame_store, frame.x, frame.y};
+  frame_buffer.paint_rect({.top = 0, .left = 0, .bottom = frame.y - 1, .right = frame.x - 1},
+                          mono_pen{.pat = background});
 
   text_drawable draw;
   draw::point const size = draw.size();
@@ -281,7 +285,7 @@ int main(int argc, char* argv[]) {
       assert(d->right <= frame.x);
       assert(d->bottom <= frame.y);
       update = *d;
-      frame_buffer.paint_rect(*d, background);
+      frame_buffer.paint_rect(*d, mono_pen{.pat = background});
       frame_buffer.clean();
     }
 

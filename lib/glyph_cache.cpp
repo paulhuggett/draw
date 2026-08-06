@@ -39,7 +39,7 @@
 #include "icubaby/icubaby.hpp"
 
 // Local includes
-#include "draw/bitmap.hpp"
+#include "draw/mono_bitmap.hpp"
 #include "draw/tracer.hpp"
 #include "draw/types.hpp"
 
@@ -53,7 +53,7 @@ namespace {
 
 namespace draw {
 
-bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
+mono_bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
   auto const key =
       (static_cast<std::uint32_t>(f.id) << icubaby::code_point_bits) | static_cast<std::uint32_t>(code_point);
   return cache_.access(key, [this, &f, code_point](std::uint32_t const /*key*/, std::size_t const index) {
@@ -66,17 +66,18 @@ bitmap const& glyph_cache::get(font const& f, char32_t const code_point) {
   });
 }
 
-bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) {
-  /// Enable to inspect the unpacking and rotation of the font data.
+mono_bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<std::byte> bitmap_store) {
+  // Enable to inspect the unpacking and rotation of the font data.
   // ReSharper disable once CppTooWideScope
   constexpr tracer<false> trace;
 
   auto const height = static_cast<std::uint16_t>(f.height * 8U);
   auto const* const glyph = f.find_glyph(code_point);
+  auto const black_pen = mono_pen{};
 
   auto const& bitmaps = glyph->bm;
   auto const width = f.width(*glyph);
-  bitmap bm{bitmap_store, width, height};
+  mono_bitmap bitmap{bitmap_store, width, height};
   for (auto y = std::size_t{0U}; y < height; ++y) {
     trace("|");
 
@@ -94,7 +95,7 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
           }
         }
 
-        auto const dest_index = y * bm.stride() + (x / 8U);
+        auto const dest_index = y * bitmap.stride() + (x / 8U);
         assert(dest_index < bitmap_store.size() && "The destination byte is not within the bitmap store");
         bitmap_store[dest_index] = pixels;
         for (auto ctr = 0U; ctr < 8U; ++ctr) {
@@ -107,12 +108,14 @@ bitmap glyph_cache::render(font const& f, char32_t const code_point, std::span<s
       auto const src_index = (x * f.height) + (y / 8U);
       assert(src_index < bitmaps.size() && "The source byte is not within the bitmap");
       auto const pixel = bitmaps[src_index] & (std::byte{1U} << (y % 8U));
-      bm.set(point{.x = static_cast<coordinate>(x), .y = static_cast<coordinate>(y)}, pixel != std::byte{0});
+      if (pixel != std::byte{0U}) {
+        bitmap.set(point{.x = static_cast<coordinate>(x), .y = static_cast<coordinate>(y)}, black_pen);
+      }
       trace("{}", pixel != std::byte{0U} ? 'X' : ' ');
     }
     trace("|{0}\n", y == f.baseline ? "<-" : "");
   }
-  return bm;
+  return bitmap;
 }
 
 }  // end namespace draw

@@ -36,6 +36,7 @@
 
 // Local includes
 #include "draw/font.hpp"
+#include "draw/glyph_cache.hpp"
 #include "draw/types.hpp"
 
 namespace draw {
@@ -98,10 +99,61 @@ constexpr coordinate scan_string(font const& f, std::u8string_view s, DrawFn dra
   return x;
 }
 
+/// Returns the width of the specified code-point in pixels. It does not include any inter-character spacing allowance.
+///
+/// \param f  A font instance
+/// \param code_point  The code point specifying the glyph to be drawn
+/// \returns The width of the specified glyph
+constexpr std::uint16_t char_width(font const& f, char32_t code_point) {
+  glyph const* const g = f.find_glyph(code_point);
+  assert(g != nullptr);
+  return f.width(*g);
+}
+
 constexpr coordinate string_width(font const& f, std::u8string_view s) {
   return scan_string(f, s, [](char32_t /*code_point*/, coordinate /*x*/) constexpr {
     // do nothing
   });
+}
+
+template <typename Color>
+class basic_bitmap;
+class glyph_cache;
+
+/// Renders an individual glyph.
+///
+/// \tparam Color  A color type
+/// \param bitmap  The destination bitmap
+/// \param gc  The glyph cache
+/// \param f  The font in which the character will be rendered
+/// \param code_point  The code point specifying the glyph to be drawn
+/// \param pos The position at which the glyph should be drawn
+template <typename Color, typename... Args>
+void draw_char(basic_bitmap<Color>& bitmap, glyph_cache& gc, font const& f, char32_t const code_point, point pos,
+               Args&&... args) {
+  if (pos.x > bitmap.width() || pos.y > bitmap.height()) {
+    return;
+  }
+  bitmap.copy(gc.get(f, code_point), pos, std::forward<Args>(args)...);
+}
+
+/// Renders a sequence of codepoints contained in a UTF-8 encoded string.
+///
+/// \tparam Color  A color type
+/// \param bitmap  The destination bitmap
+/// \param gc  The glyph cache
+/// \param f  The font in which the character will be rendered
+/// \param s  The UTF-8 encoded string to be drawn
+/// \param pos  The position for the first of the run of glyphs
+/// \returns  The origin position \p pos with the x coordinate increased by the width of all the rendered glyphs.
+template <typename Color, typename... Args>
+point draw_string(basic_bitmap<Color>& bitmap, glyph_cache& gc, font const& f, std::u8string_view s, point pos,
+                  Args&&... args) {
+  coordinate const new_x = scan_string(f, s, [&args..., &bitmap, &gc, &f, &pos](char32_t code_point, coordinate x) {
+    draw_char(bitmap, gc, f, code_point, {.x = static_cast<coordinate>(pos.x + x), .y = pos.y},
+              std::forward<Args>(args)...);
+  });
+  return {.x = static_cast<coordinate>(pos.x + new_x), .y = pos.y};
 }
 
 }  // end namespace draw

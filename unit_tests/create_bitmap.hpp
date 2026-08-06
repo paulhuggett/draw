@@ -37,11 +37,13 @@
 #include <tuple>
 #include <vector>
 // Draw library
-#include "draw/bitmap.hpp"
-#include "draw/bitmap32.hpp"
+#include "draw/mono_bitmap.hpp"
+#include "draw/rgba_bitmap.hpp"
 
-std::tuple<std::vector<std::byte>, draw::bitmap> create_bitmap_and_store(std::uint16_t width, std::uint16_t height);
-std::tuple<std::vector<draw::rgba_premult>, draw::bitmap32> create_bitmap32_and_store(std::uint16_t width,
-                                                                                      std::uint16_t height);
+std::tuple<std::vector<std::byte>, draw::mono_bitmap> create_bitmap_and_store(std::uint16_t width,
+                                                                              std::uint16_t height);
+
+std::tuple<std::vector<draw::rgba_premult>, draw::rgba_bitmap> create_bitmap32_and_store(std::uint16_t width,
+                                                                                         std::uint16_t height);
 
 #endif  // CREATE_BITMAP_HPP

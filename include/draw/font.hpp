@@ -141,9 +141,12 @@ struct font {
   glyph_map glyphs;
   // NOLINTEND(misc-non-private-member-variables-in-classes)
 
+  /// Returns the width of the specified glyph in pixels. It does not include any inter-character spacing allowance.
+  ///
+  /// \param g  The glph
+  /// \returns The width of the specified glyph
   [[nodiscard]] constexpr std::uint16_t width(glyph const& g) const noexcept {
-    auto const& bitmap = g.bm;
-    return static_cast<std::uint16_t>(bitmap.size() / this->height);
+    return static_cast<std::uint16_t>(g.bm.size() / this->height);
   }
 
   [[nodiscard]] constexpr glyph const* DRAW_NONNULL find_glyph(char32_t const code_point) const {

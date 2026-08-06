@@ -29,6 +29,9 @@
 #
 # SPDX-License-Identifier: MIT
 #===----------------------------------------------------------------------===//
+
+include(setup_target)
+
 add_custom_command(
   COMMAND
     ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/draw"

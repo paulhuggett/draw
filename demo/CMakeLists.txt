@@ -29,6 +29,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #===----------------------------------------------------------------------===//
 
+include(setup_target)
+
 if (DRAW_HOSTED)
   find_package(Curses)
 

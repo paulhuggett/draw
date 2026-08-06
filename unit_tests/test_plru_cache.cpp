@@ -39,7 +39,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#if defined(MIDI2_FUZZTEST) && MIDI2_FUZZTEST
+#if defined(DRAW_FUZZ_TESTS) && DRAW_FUZZ_TESTS
 #include <fuzztest/fuzztest.h>
 #endif
 
@@ -253,7 +253,7 @@ void NeverCrashes(std::vector<std::uint16_t> const& keys) {
   }
 }
 
-#if defined(MIDI2_FUZZTEST) && MIDI2_FUZZTEST
+#if defined(DRAW_FUZZ_TESTS) && DRAW_FUZZ_TESTS
 // NOLINTNEXTLINE
 auto NeverCrashes2x4 = NeverCrashes<2, 4>;
 FUZZ_TEST(PlruCacheFuzz, NeverCrashes2x4);
